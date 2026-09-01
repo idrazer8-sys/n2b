@@ -1,0 +1,212 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/src/lib/db';
+import { requireRestaurantAccess } from '@/src/lib/auth';
+
+export async function GET(
+  _req: NextRequest,
+  {
+    params,
+  }: {
+    params: { restaurantId: string };
+  }
+) {
+  try {
+    const access = await requireRestaurantAccess(
+      params.restaurantId,
+      'STAFF'
+    );
+
+    if (!access.ok) {
+      return NextResponse.json(
+        { error: access.message },
+        { status: access.status }
+      );
+    }
+
+    let tableIds: string[] | null = null;
+    const mine = _req.nextUrl.searchParams.get('mine') === '1';
+
+    if (access.role === 'STAFF' || mine) {
+      const membership = await db.restaurantStaff.findUnique({
+        where: {
+          userId_restaurantId: {
+            userId: access.user.id,
+            restaurantId: params.restaurantId,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!membership) {
+        return NextResponse.json(
+          { error: 'Staff membership not found' },
+          { status: 403 }
+        );
+      }
+
+      const assignments = await db.tableAssignment.findMany({
+        where: {
+          restaurantId: params.restaurantId,
+          staffId: membership.id,
+          endedAt: null,
+        },
+        select: { tableId: true },
+      });
+
+      tableIds = assignments.map((assignment) => assignment.tableId);
+    }
+
+    const tables = await db.table.findMany({
+      where: {
+        restaurantId: params.restaurantId,
+        isActive: true,
+        ...(tableIds !== null ? { id: { in: tableIds } } : {}),
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        label: true,
+        isActive: true,
+      },
+    });
+
+    const now = new Date();
+    const rows = await Promise.all(
+      tables.map(async (table) => {
+        const session = await db.customerSession.findFirst({
+          where: {
+            restaurantId: params.restaurantId,
+            tableId: table.id,
+          },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            sessionPayment: true,
+            orders: {
+              where: {
+                status: {
+                  notIn: ['REJECTED', 'CANCELLED'],
+                },
+              },
+              orderBy: { createdAt: 'asc' },
+              select: {
+                id: true,
+                orderNumber: true,
+                status: true,
+                totalCents: true,
+                paidAt: true,
+              },
+            },
+          },
+        });
+
+        if (!session) {
+          return {
+            table,
+            status: 'FREE' as const,
+            statusLabel: 'Free',
+            customerSessionId: null,
+            paymentMethod: null,
+            collectionMethod: null,
+            totalCents: 0,
+            orders: [],
+            updatedAt: now.toISOString(),
+          };
+        }
+
+        const activeOrders = session.orders.filter(
+          (order) => order.paidAt === null
+        );
+        const totalCents = activeOrders.reduce(
+          (sum, order) => sum + order.totalCents,
+          0
+        );
+        const payment = session.sessionPayment;
+
+        if (session.paidAt) {
+          return {
+            table,
+            status: 'PAID' as const,
+            statusLabel: 'Paid',
+            customerSessionId: session.id,
+            paymentMethod: payment?.paymentMethod ?? null,
+            collectionMethod: payment?.collectionMethod ?? null,
+            totalCents,
+            orders: activeOrders,
+            updatedAt: (payment?.paidAt ?? session.paidAt).toISOString(),
+          };
+        }
+
+        if (
+          payment?.paymentMethod === 'PAY_AT_RESTAURANT' &&
+          payment.status === 'REQUIRES_PAYMENT'
+        ) {
+          return {
+            table,
+            status: 'PAYMENT_REQUESTED' as const,
+            statusLabel: 'Payment requested',
+            customerSessionId: session.id,
+            paymentMethod: payment.paymentMethod,
+            collectionMethod: payment.collectionMethod,
+            totalCents: payment.amountCents,
+            orders: activeOrders,
+            updatedAt: payment.updatedAt.toISOString(),
+          };
+        }
+
+        if (
+          activeOrders.length > 0 &&
+          activeOrders.every((order) => order.status === 'COMPLETED')
+        ) {
+          return {
+            table,
+            status: 'READY_TO_PAY' as const,
+            statusLabel: 'Ready to pay',
+            customerSessionId: session.id,
+            paymentMethod: payment?.paymentMethod ?? null,
+            collectionMethod: payment?.collectionMethod ?? null,
+            totalCents,
+            orders: activeOrders,
+            updatedAt: session.createdAt.toISOString(),
+          };
+        }
+
+        if (activeOrders.length > 0) {
+          return {
+            table,
+            status: 'OCCUPIED' as const,
+            statusLabel: 'Occupied',
+            customerSessionId: session.id,
+            paymentMethod: payment?.paymentMethod ?? null,
+            collectionMethod: payment?.collectionMethod ?? null,
+            totalCents,
+            orders: activeOrders,
+            updatedAt: session.createdAt.toISOString(),
+          };
+        }
+
+        return {
+          table,
+          status: 'OPEN' as const,
+          statusLabel: 'Open',
+          customerSessionId: session.id,
+          paymentMethod: payment?.paymentMethod ?? null,
+          collectionMethod: payment?.collectionMethod ?? null,
+          totalCents: 0,
+          orders: [],
+          updatedAt: session.createdAt.toISOString(),
+        };
+      })
+    );
+
+    return NextResponse.json({
+      generatedAt: new Date().toISOString(),
+      tables: rows,
+    });
+  } catch (err) {
+    console.error('Table status GET error:', err);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

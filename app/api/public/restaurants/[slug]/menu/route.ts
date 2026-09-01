@@ -1,0 +1,52 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/src/lib/db';
+import { getOrCreateCustomerSession } from '@/src/lib/customer-session';
+
+// Public, unauthenticated endpoint — this is what the customer's browser
+// calls after tapping the NFC tag / scanning the QR code. Requires a valid
+// table token (?t=) scoped to this exact restaurant slug; an unknown or
+// foreign-restaurant token is rejected rather than silently falling back.
+export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
+  const token = req.nextUrl.searchParams.get('t');
+  if (!token) {
+    return NextResponse.json({ error: 'Missing table token' }, { status: 400 });
+  }
+
+  const restaurant = await db.restaurant.findUnique({ where: { slug: params.slug } });
+  if (!restaurant || !restaurant.isActive) {
+    return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 });
+  }
+
+  const table = await db.table.findUnique({ where: { token } });
+  if (!table || table.restaurantId !== restaurant.id || !table.isActive) {
+    return NextResponse.json({ error: 'Invalid or inactive table' }, { status: 404 });
+  }
+
+  // Mint (or reuse) this customer's session up front, so the very first
+  // response already carries the cookie the cart/checkout calls will need.
+  await getOrCreateCustomerSession(restaurant.id, table.id);
+
+  const categories = await db.menuCategory.findMany({
+    where: { restaurantId: restaurant.id },
+    orderBy: { sortOrder: 'asc' },
+    include: {
+      items: {
+        where: { isAvailable: true },
+        orderBy: { sortOrder: 'asc' },
+        include: { modifiers: { include: { options: true }, orderBy: { sortOrder: 'asc' } } },
+      },
+    },
+  });
+
+  return NextResponse.json({
+    restaurant: {
+      name: restaurant.name,
+      logoUrl: restaurant.logoUrl,
+      currency: restaurant.currency,
+      isOpen: restaurant.isOpen,
+      brandPrimaryColor: restaurant.brandPrimaryColor,
+    },
+    table: { id: table.id, label: table.label },
+    categories,
+  });
+}

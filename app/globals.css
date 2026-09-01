@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Shared "ink / paper / line" tokens — default values are the app's
+     original neutral palette, used by the customer-facing ordering flow
+     and any page that hasn't opted into the N2B platform theme. */
+  --color-ink: #111111;
+  --color-paper: #fafaf8;
+  --color-line: #e5e3dd;
+  --color-accent: #1f6f5c;
+}
+
+/* N2B platform-chrome theme — scope this class on a wrapping element
+   (dashboard shell, staff/kitchen/admin surfaces, login screens) to
+   re-theme every existing bg-ink/text-ink/bg-paper/border-line usage
+   inside it to the N2B brand palette, without touching customer-facing
+   pages that read the same tokens outside this scope. */
+.theme-n2b {
+  --color-ink: #1a134d;
+  --color-paper: #f5f6fa;
+  --color-line: #e1defa;
+  --color-accent: #5b3dff;
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+.theme-n2b .font-display {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* Dotted leader between a menu item's name and its price — the ticket/menu
+   card motif that runs through the customer-facing UI. */
+.leader {
+  flex: 1;
+  border-bottom: 1.5px dotted #C9C6BC;
+  margin: 0 0.5rem;
+  transform: translateY(-4px);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

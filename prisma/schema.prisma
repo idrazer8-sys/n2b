@@ -1,0 +1,475 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                       String            @id @default(cuid())
+  email                    String            @unique
+  passwordHash             String
+  name                     String
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  orderEvents              OrderEvent[]
+  staffMemberships         RestaurantStaff[]
+  confirmedSessionPayments SessionPayment[]  @relation("SessionPaymentConfirmedBy")
+  confirmedPayments        Payment[]         @relation("PaymentConfirmedBy")
+}
+
+model RestaurantStaff {
+  id                                                          String            @id @default(cuid())
+  userId                                                      String
+  restaurantId                                                String
+  role                                                        StaffRole         @default(STAFF)
+  staffPortal                                                 StaffPortal       @default(WAITER)
+  isActive                                                    Boolean           @default(true)
+  deletedAt                                                   DateTime?
+  createdAt                                                   DateTime          @default(now())
+  Order                                                       Order[]
+  restaurant                                                  Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user                                                        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  TableAssignment_TableAssignment_assignedByToRestaurantStaff TableAssignment[] @relation("TableAssignment_assignedByToRestaurantStaff")
+  TableAssignment_TableAssignment_staffIdToRestaurantStaff    TableAssignment[] @relation("TableAssignment_staffIdToRestaurantStaff")
+  SupportConversation                                          SupportConversation[]
+
+  @@unique([userId, restaurantId])
+  @@index([restaurantId])
+  @@index([restaurantId, isActive])
+}
+
+model Restaurant {
+  id                     String            @id @default(cuid())
+  slug                   String            @unique
+  name                   String
+  description            String?
+  logoUrl                String?
+  coverUrl               String?
+  address                String?
+  phone                  String?
+  currency               String            @default("EUR")
+  timezone               String            @default("Europe/Madrid")
+  openingHours           Json?
+  brandPrimaryColor      String            @default("#111111")
+  isOpen                 Boolean           @default(true)
+  isActive               Boolean           @default(true)
+  allowPayAtRestaurant   Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  googleReviewUrl        String?
+  kitchenSlaSeconds      Int?
+  totalServiceSlaSeconds Int?
+  waiterSlaSeconds       Int?
+  acceptanceSlaSeconds   Int?
+  categories             MenuCategory[]
+  items                  MenuItem[]
+  orders                 Order[]
+  orderEvents            OrderEvent[]
+  staff                  RestaurantStaff[]
+  stripeAccount          StripeAccount?
+  membership             Membership?
+  tables                 Table[]
+  TableAssignment        TableAssignment[]
+  SupportConversation    SupportConversation[]
+
+  @@index([slug])
+}
+
+model Membership {
+  id                   String            @id @default(cuid())
+  restaurantId         String            @unique
+  tier                 MembershipTier?
+  status               MembershipStatus  @default(INCOMPLETE)
+  stripeCustomerId     String?           @unique
+  stripeSubscriptionId String?           @unique
+  stripePriceId        String?
+  trialEndsAt          DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean           @default(false)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  restaurant           Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+enum MembershipTier {
+  BASIC
+  PRO
+  BUSINESS
+}
+
+enum MembershipStatus {
+  INCOMPLETE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model Table {
+  id              String             @id @default(cuid())
+  restaurantId    String
+  label           String
+  token           String             @unique @default(cuid())
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  orders          Order[]
+  restaurant      Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  TableAssignment TableAssignment[]
+
+  @@index([restaurantId])
+  @@index([token])
+}
+
+model MenuCategory {
+  id                String     @id @default(cuid())
+  restaurantId      String
+  name              String
+  sortOrder         Int        @default(0)
+  createdAt         DateTime   @default(now())
+  isDessertCategory Boolean    @default(false)
+  restaurant        Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items             MenuItem[]
+
+  @@index([restaurantId])
+}
+
+model MenuItem {
+  id           String         @id @default(cuid())
+  restaurantId String
+  categoryId   String
+  name         String
+  description  String?
+  priceCents   Int
+  imageUrl     String?
+  allergens    String[]       @default([])
+  ingredients  String[]       @default([])
+  isAvailable  Boolean        @default(true)
+  sortOrder    Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  category     MenuCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  modifiers    MenuModifier[]
+  orderItems   OrderItem[]
+
+  @@index([restaurantId])
+  @@index([categoryId])
+}
+
+model MenuModifier {
+  id            String                @id @default(cuid())
+  menuItemId    String
+  name          String
+  selectionType ModifierSelectionType @default(SINGLE)
+  isRequired    Boolean               @default(false)
+  minSelect     Int                   @default(0)
+  maxSelect     Int?
+  sortOrder     Int                   @default(0)
+  menuItem      MenuItem              @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  options       MenuModifierOption[]
+
+  @@index([menuItemId])
+}
+
+model MenuModifierOption {
+  id               String              @id @default(cuid())
+  modifierId       String
+  name             String
+  priceDeltaCents  Int                 @default(0)
+  isAvailable      Boolean             @default(true)
+  sortOrder        Int                 @default(0)
+  modifier         MenuModifier        @relation(fields: [modifierId], references: [id], onDelete: Cascade)
+  orderItemChoices OrderItemModifier[]
+
+  @@index([modifierId])
+}
+
+model CustomerSession {
+  id             String          @id @default(cuid())
+  restaurantId   String
+  tableId        String
+  createdAt      DateTime        @default(now())
+  expiresAt      DateTime
+  finalizedAt    DateTime?
+  paidAt         DateTime?
+  orders         Order[]
+  sessionPayment SessionPayment?
+
+  @@index([restaurantId, tableId])
+}
+
+model Order {
+  id                String           @id @default(cuid())
+  restaurantId      String
+  tableId           String
+  customerSessionId String
+  orderNumber       Int
+  status            OrderStatus      @default(PENDING_PAYMENT)
+  notes             String?
+  subtotalCents     Int
+  taxCents          Int
+  totalCents        Int
+  currency          String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  acceptedAt        DateTime?
+  readyAt           DateTime?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  paidAt            DateTime?
+  preparingAt       DateTime?
+  rejectedAt        DateTime?
+  staffId           String?
+  customerSession   CustomerSession  @relation(fields: [customerSessionId], references: [id])
+  restaurant        Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  RestaurantStaff   RestaurantStaff? @relation(fields: [staffId], references: [id])
+  table             Table             @relation(fields: [tableId], references: [id])
+  events            OrderEvent[]
+  items             OrderItem[]
+  payment           Payment?
+
+  @@unique([restaurantId, orderNumber])
+  @@index([restaurantId, status])
+  @@index([restaurantId, status, createdAt])
+  @@index([tableId])
+  @@index([customerSessionId])
+  @@index([restaurantId, staffId])
+}
+
+model OrderItem {
+  id             String              @id @default(cuid())
+  orderId        String
+  menuItemId     String
+  nameSnapshot   String
+  unitPriceCents Int
+  quantity       Int
+  lineTotalCents Int
+  notes          String?
+  menuItem       MenuItem            @relation(fields: [menuItemId], references: [id])
+  order          Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  modifiers      OrderItemModifier[]
+
+  @@index([orderId])
+}
+
+model OrderItemModifier {
+  id                      String             @id @default(cuid())
+  orderItemId             String
+  modifierOptionId        String
+  nameSnapshot            String
+  priceDeltaCentsSnapshot Int
+  modifierOption          MenuModifierOption @relation(fields: [modifierOptionId], references: [id])
+  orderItem               OrderItem          @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+}
+
+model OrderEvent {
+  id           String         @id @default(cuid())
+  orderId      String
+  restaurantId String
+  type         OrderEventType
+  actorUserId  String?
+  createdAt    DateTime       @default(now())
+  metadata     Json?
+  actor        User?          @relation(fields: [actorUserId], references: [id])
+  order        Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, type, createdAt])
+  @@index([orderId, createdAt])
+  @@index([actorUserId, createdAt])
+}
+
+model SessionPayment {
+  id                      String                   @id @default(cuid())
+  customerSessionId       String                   @unique
+  stripeCheckoutSessionId String?                  @unique
+  stripePaymentIntentId   String?                  @unique
+  status                  SessionPaymentStatus     @default(REQUIRES_PAYMENT)
+  paymentMethod           PaymentMethod            @default(ONLINE)
+  collectionMethod        PaymentCollectionMethod?
+  amountCents             Int
+  currency                String
+  applicationFeeCents     Int
+  paidAt                  DateTime?
+  confirmedByUserId       String?
+  confirmedAt             DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  customerSession         CustomerSession          @relation(fields: [customerSessionId], references: [id], onDelete: Cascade)
+  confirmedBy             User?                    @relation("SessionPaymentConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([customerSessionId])
+  @@index([confirmedByUserId])
+}
+
+model Payment {
+  id                      String                   @id @default(cuid())
+  orderId                 String                   @unique
+  stripeCheckoutSessionId String?                  @unique
+  stripePaymentIntentId   String?                  @unique
+  status                  PaymentStatus            @default(REQUIRES_PAYMENT)
+  paymentMethod           PaymentMethod            @default(ONLINE)
+  collectionMethod        PaymentCollectionMethod?
+  amountCents             Int
+  currency                String
+  applicationFeeCents     Int
+  confirmedByUserId       String?
+  confirmedAt             DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  order                   Order                    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  confirmedBy             User?                    @relation("PaymentConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([confirmedByUserId])
+}
+
+model StripeAccount {
+  id                 String     @id @default(cuid())
+  restaurantId       String     @unique
+  stripeAccountId    String     @unique
+  onboardingComplete Boolean    @default(false)
+  chargesEnabled     Boolean    @default(false)
+  payoutsEnabled     Boolean    @default(false)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @default(now())
+  restaurant         Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model TableAssignment {
+  id                                                          String          @id @default(cuid())
+  restaurantId                                                String
+  tableId                                                     String
+  staffId                                                     String
+  role                                                        AssignmentRole  @default(PRIMARY)
+  assignedAt                                                  DateTime        @default(now())
+  endedAt                                                     DateTime?
+  assignedBy                                                  String
+  shiftId                                                     String?
+  RestaurantStaff_TableAssignment_assignedByToRestaurantStaff RestaurantStaff @relation("TableAssignment_assignedByToRestaurantStaff", fields: [assignedBy], references: [id])
+  Restaurant                                                  Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  RestaurantStaff_TableAssignment_staffIdToRestaurantStaff    RestaurantStaff @relation("TableAssignment_staffIdToRestaurantStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  Table                                                       Table           @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, staffId, endedAt])
+  @@index([restaurantId, tableId, endedAt])
+}
+
+enum StaffRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum StaffPortal {
+  WAITER
+  KITCHEN
+}
+
+enum ModifierSelectionType {
+  SINGLE
+  MULTIPLE
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  NEW
+  ACCEPTED
+  PREPARING
+  READY
+  COMPLETED
+  REJECTED
+  CANCELLED
+  PAYMENT_FAILED
+}
+
+enum OrderEventType {
+  ORDER_CREATED
+  ORDER_ACCEPTED
+  ORDER_REJECTED
+  ORDER_PREPARING
+  ORDER_READY
+  ORDER_COMPLETED
+  ORDER_CANCELLED
+  ORDER_CLAIMED
+  PAYMENT_STARTED
+  PAYMENT_SUCCEEDED
+  PAYMENT_FAILED
+}
+
+enum SessionPaymentStatus {
+  REQUIRES_PAYMENT
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  REQUIRES_PAYMENT
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum AssignmentRole {
+  PRIMARY
+  ASSISTING
+}
+
+enum PaymentMethod {
+  ONLINE
+  PAY_AT_RESTAURANT
+}
+
+enum PaymentCollectionMethod {
+  CASH
+  CARD
+  OTHER
+}
+
+model SupportConversation {
+  id           String               @id @default(cuid())
+  restaurantId String
+  staffId      String
+  status       SupportStatus        @default(OPEN)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  restaurant   Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  staff        RestaurantStaff      @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  messages     SupportMessage[]
+
+  @@index([restaurantId, status])
+  @@index([staffId])
+}
+
+model SupportMessage {
+  id             String              @id @default(cuid())
+  conversationId String
+  role           SupportMessageRole
+  content        String
+  createdAt      DateTime            @default(now())
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+enum SupportStatus {
+  OPEN
+  ESCALATED
+  RESOLVED
+}
+
+enum SupportMessageRole {
+  USER
+  ASSISTANT
+  HUMAN
+}
