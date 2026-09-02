@@ -1507,6 +1507,13 @@ export default function StaffOrdersPage() {
   const myStaffId =
     me?.staffId ?? null;
 
+  // A manager/owner needs full oversight of what's ready to serve — even
+  // on tables staffed by someone else — so they can step in without first
+  // reassigning the table. Regular staff only ever act on their own.
+  const canActOnAnyReadyOrder =
+    me?.role === 'MANAGER' ||
+    me?.role === 'OWNER';
+
   const assignedTableIds =
     useMemo(
       () =>
@@ -1576,8 +1583,11 @@ export default function StaffOrdersPage() {
           .filter(
             (order) =>
               hasServableItem(order) &&
-              order.staffId ===
-                myStaffId
+              (order.staffId ===
+                myStaffId ||
+                (canActOnAnyReadyOrder &&
+                  order.staffId !==
+                    null))
           )
           .sort(
             (a, b) =>
@@ -1588,7 +1598,11 @@ export default function StaffOrdersPage() {
                 b.createdAt
               ).getTime()
           ),
-      [orders, myStaffId]
+      [
+        orders,
+        myStaffId,
+        canActOnAnyReadyOrder,
+      ]
     );
 
   const unclaimedReadyOrders =
@@ -1616,15 +1630,21 @@ export default function StaffOrdersPage() {
   const claimedByOtherReady =
     useMemo(
       () =>
-        orders.filter(
-          (order) =>
-            hasServableItem(order) &&
-            order.staffId !==
-              null &&
-            order.staffId !==
-              myStaffId
-        ),
-      [orders, myStaffId]
+        canActOnAnyReadyOrder
+          ? []
+          : orders.filter(
+              (order) =>
+                hasServableItem(order) &&
+                order.staffId !==
+                  null &&
+                order.staffId !==
+                  myStaffId
+            ),
+      [
+        orders,
+        myStaffId,
+        canActOnAnyReadyOrder,
+      ]
     );
 
   const myActiveOrders =
