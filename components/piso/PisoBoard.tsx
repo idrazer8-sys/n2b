@@ -6,9 +6,7 @@ import {
   PlusIcon,
   TrashIcon,
   CloseIcon,
-  CheckIcon,
   UsersIcon,
-  CreditCardIcon,
   UtensilsIcon,
   ClipboardIcon,
 } from '@/components/branding/icons';
@@ -65,16 +63,15 @@ type StatusRow = {
   totalCents: number;
   partySize: number | null;
   orders: OrderRow[];
+  updatedAt: string;
 };
 
-type NotificationType = 'pago' | 'pedido' | 'comanda';
-
-type NotificationItem = {
+type ReservationRow = {
   id: string;
   tableId: string;
-  tableLabel: string;
-  type: NotificationType;
-  text: string;
+  startsAt: string;
+  partySize: number;
+  status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
 };
 
 const DEFAULT_TABLE_SIZE = 88;
@@ -97,6 +94,157 @@ function statusDotColor(status: StatusRow['status']) {
   }
 }
 
+type LegendBucket = 'occupied' | 'reserved' | 'waiting' | 'free';
+
+const BUCKET_COLOR: Record<LegendBucket, string> = {
+  occupied: '#35c88a',
+  reserved: '#e0a83a',
+  waiting: '#ef5a6f',
+  free: '#5b6472',
+};
+
+function floorBucket(status: StatusRow['status'], hasReservationSoon: boolean): LegendBucket {
+  if (status === 'READY_TO_PAY' || status === 'PAYMENT_REQUESTED') return 'waiting';
+  if (status === 'OPEN' || status === 'OCCUPIED' || status === 'PAID') return 'occupied';
+  if (hasReservationSoon) return 'reserved';
+  return 'free';
+}
+
+function formatClock(iso: string) {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// Tables carry free-text labels ("Mesa 1", "Terraza 2"), but the seat
+// itself only has room for a short token — pull the trailing number when
+// there is one, otherwise fall back to the first couple of characters.
+function shortTableLabel(label: string) {
+  const trailingNumber = label.match(/(\d+)\s*$/);
+  if (trailingNumber) return trailingNumber[1];
+  return label.slice(0, 2).toUpperCase();
+}
+
+const CHAIR_COLOR = '#2b2f38';
+const CHAIR_BORDER = '#454b57';
+
+function Chair({ style }: { style: React.CSSProperties }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute rounded-full"
+      style={{
+        width: 12,
+        height: 12,
+        background: CHAIR_COLOR,
+        border: `1.5px solid ${CHAIR_BORDER}`,
+        ...style,
+      }}
+    />
+  );
+}
+
+function TableChairs({
+  shape,
+  width,
+  height,
+}: {
+  shape: Shape;
+  width: number;
+  height: number;
+}) {
+  if (shape === 'CIRCLE') {
+    const radius = width / 2 + 11;
+    const cx = width / 2;
+    const cy = height / 2;
+    const seatCount = width >= 100 ? 8 : 6;
+    return (
+      <>
+        {Array.from({ length: seatCount }).map((_, i) => {
+          const angle = (i / seatCount) * Math.PI * 2 - Math.PI / 2;
+          const x = cx + radius * Math.cos(angle) - 6;
+          const y = cy + radius * Math.sin(angle) - 6;
+          return <Chair key={i} style={{ left: x, top: y }} />;
+        })}
+      </>
+    );
+  }
+
+  // SQUARE / RECT — evenly spaced along each side.
+  const perSideTop = Math.max(1, Math.round(width / 70));
+  const perSideVertical = Math.max(1, Math.round(height / 70));
+  const chairs: React.CSSProperties[] = [];
+
+  for (let i = 0; i < perSideTop; i++) {
+    const x = ((i + 0.5) / perSideTop) * width - 6;
+    chairs.push({ left: x, top: -18 });
+    chairs.push({ left: x, top: height + 6 });
+  }
+  for (let i = 0; i < perSideVertical; i++) {
+    const y = ((i + 0.5) / perSideVertical) * height - 6;
+    chairs.push({ left: -18, top: y });
+    chairs.push({ left: width + 6, top: y });
+  }
+
+  return (
+    <>
+      {chairs.map((style, i) => (
+        <Chair key={i} style={style} />
+      ))}
+    </>
+  );
+}
+
+function RoomDecor({ t }: { t: Translate }) {
+  const label: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 600,
+    color: '#6b7280',
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+  };
+  const fixture: React.CSSProperties = {
+    position: 'absolute',
+    borderRadius: 12,
+    border: '1px dashed #2a2f38',
+    background: 'rgba(255,255,255,0.02)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    pointerEvents: 'none',
+  };
+
+  return (
+    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+      {/* Bar counter */}
+      <div style={{ ...fixture, left: 620, top: 16, width: 200, height: 56 }}>
+        <span style={label}>Bar</span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#3a3f4a' }} />
+          ))}
+        </div>
+      </div>
+
+      {/* Kitchen */}
+      <div style={{ ...fixture, left: 840, top: 16, width: 220, height: 100 }}>
+        <UtensilsIcon size={22} />
+        <span style={label}>{t('floorPlan.decor.kitchen')}</span>
+      </div>
+
+      {/* Entrance */}
+      <div style={{ ...fixture, left: 920, top: 520, width: 150, height: 70, border: 'none' }}>
+        <span style={{ fontSize: 20, color: '#5b6472' }}>↑</span>
+        <span style={label}>{t('floorPlan.decor.entrance')}</span>
+      </div>
+
+      {/* Decorative plants */}
+      <div style={{ position: 'absolute', left: 630, top: 540, fontSize: 22 }}>🌿</div>
+      <div style={{ position: 'absolute', left: 1060, top: 16, fontSize: 22 }}>🌿</div>
+    </div>
+  );
+}
+
 export default function PisoBoard({
   restaurantId,
   editable,
@@ -111,7 +259,7 @@ export default function PisoBoard({
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [tables, setTables] = useState<TableRow[]>([]);
   const [statuses, setStatuses] = useState<StatusRow[]>([]);
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [reservations, setReservations] = useState<ReservationRow[]>([]);
   const [selected, setSelected] = useState<
     { kind: 'table' | 'zone'; id: string } | null
   >(null);
@@ -185,89 +333,92 @@ export default function PisoBoard({
     }
   }, [restaurantId, scopeToMine]);
 
+  const loadReservations = useCallback(async () => {
+    try {
+      const from = new Date().toISOString();
+      const to = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+      const res = await fetch(
+        `/api/restaurants/${restaurantId}/reservations?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&status=CONFIRMED`,
+        { credentials: 'include', cache: 'no-store' }
+      );
+      const json = await res.json().catch(() => ({ reservations: [] }));
+      if (res.ok) {
+        setReservations(Array.isArray(json.reservations) ? json.reservations : []);
+      }
+    } catch {
+      // Best-effort — the board still works without the reservation overlay.
+    }
+  }, [restaurantId]);
+
   useEffect(() => {
     void loadLayout();
     void loadStatuses();
+    void loadReservations();
     const interval = window.setInterval(() => {
-      if (!draggingRef.current) void loadStatuses();
+      if (!draggingRef.current) {
+        void loadStatuses();
+        void loadReservations();
+      }
     }, 4000);
     return () => window.clearInterval(interval);
-  }, [loadLayout, loadStatuses]);
+  }, [loadLayout, loadStatuses, loadReservations]);
 
-  const notifications = useMemo<NotificationItem[]>(() => {
-    const items: NotificationItem[] = [];
-
-    for (const row of statuses) {
-      if (dismissed.has(row.table.id)) continue;
-
-      if (row.status === 'PAYMENT_REQUESTED') {
-        items.push({
-          id: `${row.table.id}-bill`,
-          tableId: row.table.id,
-          tableLabel: row.table.label,
-          type: 'pago',
-          text: t('floorPlan.notifications.billRequested'),
-        });
-      } else if (row.status === 'READY_TO_PAY') {
-        items.push({
-          id: `${row.table.id}-ready-to-pay`,
-          tableId: row.table.id,
-          tableLabel: row.table.label,
-          type: 'pago',
-          text: t('floorPlan.notifications.readyToPay'),
-        });
-      }
-
-      for (const order of row.orders) {
-        if (order.status === 'NEW' || order.status === 'ACCEPTED') {
-          items.push({
-            id: `${row.table.id}-order-${order.id}`,
-            tableId: row.table.id,
-            tableLabel: row.table.label,
-            type: 'pedido',
-            text: t('floorPlan.notifications.newOrder'),
-          });
-        } else if (order.status === 'PREPARING') {
-          items.push({
-            id: `${row.table.id}-order-${order.id}`,
-            tableId: row.table.id,
-            tableLabel: row.table.label,
-            type: 'comanda',
-            text: t('floorPlan.notifications.preparing'),
-          });
-        } else if (order.status === 'READY') {
-          items.push({
-            id: `${row.table.id}-order-${order.id}`,
-            tableId: row.table.id,
-            tableLabel: row.table.label,
-            type: 'comanda',
-            text: t('floorPlan.notifications.ready'),
-          });
-        }
-      }
+  const nextReservationByTableId = useMemo(() => {
+    const map = new Map<string, ReservationRow>();
+    const sorted = [...reservations].sort(
+      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+    );
+    for (const reservation of sorted) {
+      if (!map.has(reservation.tableId)) map.set(reservation.tableId, reservation);
     }
-
-    const weight: Record<NotificationType, number> = {
-      pago: 0,
-      pedido: 1,
-      comanda: 2,
-    };
-
-    return items.sort((a, b) => weight[a.type] - weight[b.type]);
-  }, [statuses, dismissed, t]);
+    return map;
+  }, [reservations]);
 
   const counts = useMemo(() => {
-    const result = { free: 0, occupied: 0, readyToPay: 0, paid: 0 };
+    const result: Record<LegendBucket, number> = { occupied: 0, reserved: 0, waiting: 0, free: 0 };
     for (const table of tables) {
       const row = statusByTableId.get(table.id);
       const status = row?.status ?? 'FREE';
-      if (status === 'FREE') result.free += 1;
-      else if (status === 'OPEN' || status === 'OCCUPIED') result.occupied += 1;
-      else if (status === 'READY_TO_PAY' || status === 'PAYMENT_REQUESTED')
-        result.readyToPay += 1;
-      else if (status === 'PAID') result.paid += 1;
+      const bucket = floorBucket(status, nextReservationByTableId.has(table.id));
+      result[bucket] += 1;
     }
     return result;
+  }, [tables, statusByTableId, nextReservationByTableId]);
+
+  const orderStatusLabel = useCallback(
+    (status: OrderRow['status']) => {
+      if (status === 'COMPLETED') return t('floorPlan.orderStatus.served');
+      if (status === 'READY') return t('floorPlan.notifications.ready');
+      return t('floorPlan.notifications.preparing');
+    },
+    [t]
+  );
+
+  const ordersInProgress = useMemo(() => {
+    const rows: {
+      tableId: string;
+      tableLabel: string;
+      partySize: number | null;
+      orderStatus: OrderRow['status'];
+      time: string;
+      bucket: LegendBucket;
+    }[] = [];
+
+    for (const table of tables) {
+      const row = statusByTableId.get(table.id);
+      if (!row || row.orders.length === 0) continue;
+      const latest = row.orders[row.orders.length - 1];
+      rows.push({
+        tableId: table.id,
+        tableLabel: table.label,
+        partySize: row.partySize,
+        orderStatus: latest.status,
+        time: row.updatedAt,
+        bucket: floorBucket(row.status, false),
+      });
+    }
+
+    return rows.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
   }, [tables, statusByTableId]);
 
   const selectedTable =
@@ -570,6 +721,8 @@ export default function PisoBoard({
             style={{ width: '100%', maxWidth: 1104, height: 620 }}
           >
             <div className="relative" style={{ width: 1104, height: 620 }}>
+              <RoomDecor t={t} />
+
               {zones.length === 0 && tables.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm text-[#5b6472]">
                   {editable
@@ -627,62 +780,59 @@ export default function PisoBoard({
                 const width = table.width ?? DEFAULT_TABLE_SIZE;
                 const height = table.height ?? DEFAULT_TABLE_SIZE;
                 const dimmed = scopeToMine && !isKnown;
+                const reservation = nextReservationByTableId.get(table.id);
+                const bucket = floorBucket(status, !!reservation);
+                const ringColor = BUCKET_COLOR[bucket];
 
-                let subtitle = t('floorPlan.status.free');
+                let subtitle: string;
                 if (dimmed) subtitle = t('floorPlan.status.notMine');
-                else if (row && row.status !== 'FREE') {
-                  subtitle =
-                    row.partySize != null
-                      ? t('floorPlan.detail.guests', { count: row.partySize })
-                      : t(
-                          row.status === 'READY_TO_PAY' ||
-                            row.status === 'PAYMENT_REQUESTED'
-                            ? 'floorPlan.status.readyToPay'
-                            : row.status === 'PAID'
-                            ? 'floorPlan.status.paid'
-                            : 'floorPlan.status.occupied'
-                        );
-                }
+                else if (row && row.partySize != null)
+                  subtitle = t('floorPlan.detail.guests', { count: row.partySize });
+                else if (bucket === 'reserved' && reservation)
+                  subtitle = t('floorPlan.reservedSoon', { time: formatClock(reservation.startsAt) });
+                else subtitle = t(`floorPlan.legend.${bucket}`);
 
                 return (
                   <div
                     key={table.id}
                     onPointerDown={(e) => startDrag(e, 'table', table.id, 'move')}
-                    className="absolute flex flex-col items-center justify-center select-none"
+                    className="absolute select-none"
                     style={{
                       left: table.x ?? 0,
                       top: table.y ?? 0,
                       width,
                       height,
-                      borderRadius: table.shape === 'CIRCLE' ? '50%' : 14,
-                      background: '#242832',
-                      border: `2px solid ${isSel ? '#d97a3d' : statusDotColor(status)}`,
-                      boxShadow: isSel ? '0 0 0 3px rgba(217,122,61,0.2)' : 'none',
                       opacity: dimmed ? 0.45 : 1,
                       cursor: editable ? 'move' : dimmed ? 'default' : 'pointer',
                     }}
                   >
+                    <TableChairs shape={table.shape} width={width} height={height} />
+
                     <div
-                      className="rounded-full flex items-center justify-center font-extrabold px-1.5"
+                      className="absolute inset-0 flex flex-col items-center justify-center"
                       style={{
-                        minWidth: 22,
-                        height: 20,
-                        maxWidth: 'calc(100% - 8px)',
-                        background: statusDotColor(status),
-                        color: '#0e1013',
-                        fontSize: 10.5,
-                        marginBottom: 4,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
+                        borderRadius: table.shape === 'CIRCLE' ? '50%' : 12,
+                        background: 'linear-gradient(155deg, #8a6239, #6b4a29)',
+                        border: `3px solid ${isSel ? '#d97a3d' : ringColor}`,
+                        boxShadow: isSel
+                          ? '0 0 0 3px rgba(217,122,61,0.25)'
+                          : `0 0 0 3px ${ringColor}33, inset 0 1px 6px rgba(0,0,0,0.35)`,
                       }}
-                      title={table.label}
                     >
-                      {table.label}
+                      <span
+                        className="font-extrabold leading-none"
+                        style={{ fontSize: 17, color: '#fdf6ec', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+                        title={table.label}
+                      >
+                        {shortTableLabel(table.label)}
+                      </span>
+                      <span
+                        className="text-center leading-tight px-1 mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
+                        style={{ fontSize: 9.5, color: '#e9d9c2' }}
+                      >
+                        {subtitle}
+                      </span>
                     </div>
-                    <span className="text-[10px] text-[#aab1bd] px-1 text-center leading-tight max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                      {subtitle}
-                    </span>
 
                     {editable && isSel && (
                       <div
@@ -698,6 +848,7 @@ export default function PisoBoard({
                           height: 14,
                           background: '#d97a3d',
                           cursor: 'nwse-resize',
+                          zIndex: 2,
                         }}
                       />
                     )}
@@ -711,10 +862,10 @@ export default function PisoBoard({
         {/* right panel */}
         <div className="w-80 shrink-0 border-l border-[#23272f] p-4 bg-[#161920]">
           <div className="grid grid-cols-2 gap-2 mb-5">
-            <StatChip color="#5b6472" label={t('floorPlan.status.free')} value={counts.free} />
-            <StatChip color="#35c88a" label={t('floorPlan.status.occupied')} value={counts.occupied} />
-            <StatChip color="#ef5a6f" label={t('floorPlan.status.readyToPay')} value={counts.readyToPay} />
-            <StatChip color="#5B3DFF" label={t('floorPlan.status.paid')} value={counts.paid} />
+            <StatChip color={BUCKET_COLOR.occupied} label={t('floorPlan.legend.occupied')} value={counts.occupied} />
+            <StatChip color={BUCKET_COLOR.reserved} label={t('floorPlan.legend.reserved')} value={counts.reserved} />
+            <StatChip color={BUCKET_COLOR.waiting} label={t('floorPlan.legend.waiting')} value={counts.waiting} />
+            <StatChip color={BUCKET_COLOR.free} label={t('floorPlan.legend.free')} value={counts.free} />
           </div>
 
           {editable && selected ? (
@@ -737,26 +888,54 @@ export default function PisoBoard({
             />
           ) : (
             <>
-              <div className="text-[13px] font-bold mb-2.5 text-[#c9cfd9]">
-                {t('floorPlan.notifications.heading')} · {notifications.length}
+              <div className="text-[13px] font-bold mb-2.5 text-[#c9cfd9] flex items-center gap-1.5">
+                <ClipboardIcon size={15} />
+                {t('floorPlan.ordersHeading')}
               </div>
-              <div className="flex flex-col gap-2 max-h-[480px] overflow-y-auto">
-                {notifications.length === 0 && (
+              <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto">
+                {ordersInProgress.length === 0 && (
                   <div className="text-[13px] text-[#5b6472] py-5 px-1">
-                    {t('floorPlan.notifications.empty')}
+                    {t('floorPlan.ordersEmpty')}
                   </div>
                 )}
-                {notifications.map((n) => (
-                  <NotificationRow
-                    key={n.id}
-                    item={n}
-                    t={t}
-                    onResolve={() =>
-                      setDismissed((prev) => new Set(prev).add(n.tableId))
-                    }
-                  />
+                {ordersInProgress.map((o) => (
+                  <button
+                    key={o.tableId}
+                    type="button"
+                    onClick={() => setSelected({ kind: 'table', id: o.tableId })}
+                    className="text-left rounded-lg p-2.5 flex items-center gap-2.5"
+                    style={{
+                      background: '#1e222a',
+                      borderLeft: `3px solid ${BUCKET_COLOR[o.bucket]}`,
+                    }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-bold">
+                        {t('floorPlan.notifications.tablePrefix', { label: o.tableLabel })}
+                        {o.partySize != null && (
+                          <span className="font-normal text-[#9aa2b1]">
+                            {' '}
+                            · {o.partySize} pers.
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[12px] text-[#9aa2b1]">{orderStatusLabel(o.orderStatus)}</div>
+                    </div>
+                    <span className="text-[11px] text-[#6b7280] shrink-0">{formatClock(o.time)}</span>
+                  </button>
                 ))}
               </div>
+
+              {ordersInProgress.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelected({ kind: 'table', id: ordersInProgress[0].tableId })}
+                  className="mt-3 w-full rounded-lg py-2.5 text-[12.5px] font-semibold"
+                  style={{ background: '#5B3DFF', color: '#fff' }}
+                >
+                  {t('floorPlan.viewOrderDetails')}
+                </button>
+              )}
             </>
           )}
         </div>
@@ -980,45 +1159,3 @@ function TableDetail({
   );
 }
 
-function NotificationRow({
-  item,
-  t,
-  onResolve,
-}: {
-  item: NotificationItem;
-  t: Translate;
-  onResolve: () => void;
-}) {
-  const meta: Record<NotificationType, { color: string; Icon: (props: { size?: number }) => JSX.Element }> = {
-    pago: { color: '#ef5a6f', Icon: CreditCardIcon },
-    pedido: { color: '#e0984a', Icon: UtensilsIcon },
-    comanda: { color: '#f0b429', Icon: ClipboardIcon },
-  };
-  const { color, Icon } = meta[item.type];
-
-  return (
-    <div
-      className="flex items-start gap-2.5 rounded-lg border p-2.5"
-      style={{ background: '#1e222a', borderColor: '#2a2f38', borderLeft: `3px solid ${color}` }}
-    >
-      <span style={{ color, marginTop: 2, flexShrink: 0 }}>
-        <Icon size={16} />
-      </span>
-      <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-bold">
-          {t('floorPlan.notifications.tablePrefix', { label: item.tableLabel })}
-        </div>
-        <div className="text-[12px] text-[#9aa2b1]">{item.text}</div>
-      </div>
-      <button
-        type="button"
-        onClick={onResolve}
-        title={t('floorPlan.notifications.markHandled')}
-        className="rounded-lg flex items-center justify-center shrink-0"
-        style={{ width: 26, height: 26, background: '#262b34', color: '#8ee6b4' }}
-      >
-        <CheckIcon size={14} />
-      </button>
-    </div>
-  );
-}
