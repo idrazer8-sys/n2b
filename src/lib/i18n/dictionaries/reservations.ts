@@ -2,6 +2,7 @@ import type { Locale } from '../locales';
 
 export const reservations: Record<Locale, Record<string, string>> = {
   es: {
+    'reservations.eyebrow': 'Gestión',
     'reservations.title': 'Reservas',
     'reservations.subtitle': 'Gestiona las reservas de mesa y controla cuándo se puede escanear el código de una mesa reservada.',
     'reservations.newReservation': 'Nueva reserva',
@@ -33,6 +34,7 @@ export const reservations: Record<Locale, Record<string, string>> = {
     'reservations.optional': 'opcional',
   },
   en: {
+    'reservations.eyebrow': 'Management',
     'reservations.title': 'Reservations',
     'reservations.subtitle': 'Manage table reservations and control when a reserved table\'s QR code stops accepting orders.',
     'reservations.newReservation': 'New reservation',
@@ -64,6 +66,7 @@ export const reservations: Record<Locale, Record<string, string>> = {
     'reservations.optional': 'optional',
   },
   pt: {
+    'reservations.eyebrow': 'Gestão',
     'reservations.title': 'Reservas',
     'reservations.subtitle': 'Gerencie as reservas de mesa e controle quando o código QR de uma mesa reservada deixa de aceitar pedidos.',
     'reservations.newReservation': 'Nova reserva',
@@ -95,6 +98,7 @@ export const reservations: Record<Locale, Record<string, string>> = {
     'reservations.optional': 'opcional',
   },
   de: {
+    'reservations.eyebrow': 'Verwaltung',
     'reservations.title': 'Reservierungen',
     'reservations.subtitle': 'Verwalte Tischreservierungen und lege fest, ab wann der QR-Code eines reservierten Tisches keine Bestellungen mehr annimmt.',
     'reservations.newReservation': 'Neue Reservierung',
@@ -126,6 +130,7 @@ export const reservations: Record<Locale, Record<string, string>> = {
     'reservations.optional': 'optional',
   },
   fr: {
+    'reservations.eyebrow': 'Gestion',
     'reservations.title': 'Réservations',
     'reservations.subtitle': 'Gérez les réservations de table et définissez à partir de quand le code QR d\'une table réservée n\'accepte plus de commandes.',
     'reservations.newReservation': 'Nouvelle réservation',

@@ -13,6 +13,9 @@ export default function DashboardPisoPage({
   return (
     <div className="pb-12">
       <div className="mb-6">
+        <p className="text-[10px] uppercase tracking-[0.15em] text-ink/40">
+          {t('floorPlan.managerEyebrow')}
+        </p>
         <h1 className="font-display text-3xl mt-1">{t('floorPlan.title')}</h1>
         <p className="text-sm text-ink/50 mt-2">
           {t('floorPlan.subtitleManager')}

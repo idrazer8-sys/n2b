@@ -225,6 +225,9 @@ export default function ReservationsPage({
   return (
     <div className="pb-12">
       <div className="mb-6">
+        <p className="text-[10px] uppercase tracking-[0.15em] text-ink/40">
+          {t('reservations.eyebrow')}
+        </p>
         <h1 className="font-display text-3xl mt-1">
           {t('reservations.title')}
         </h1>

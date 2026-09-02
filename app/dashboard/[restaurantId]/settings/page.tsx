@@ -280,129 +280,128 @@ export default function SettingsPage() {
         Number(waiterSla)
       : null;
 
+  const disabledFieldClass =
+    'w-full border border-line rounded-lg px-3 py-2 text-sm bg-ink/5 text-ink/60';
+
+  const inputClass =
+    'w-full border border-line rounded-lg px-3 py-2 text-sm outline-none focus:border-ink';
+
+  const cardHeadingClass =
+    'text-sm font-medium uppercase tracking-[0.1em] text-ink/60 mb-4';
+
+  const labelClass = 'block text-xs text-ink/50 mb-1';
+
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6">
-        <div className="mx-auto max-w-5xl">
-          <div className="rounded-xl border bg-white p-8">
-            {t('dashboardCore.settings.loading')}
-          </div>
+      <div className="pb-12">
+        <div className="border border-line rounded-xl p-8 text-sm text-ink/60">
+          {t('dashboardCore.settings.loading')}
         </div>
-      </main>
+      </div>
     );
   }
 
   if (error && !settings) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6">
-        <div className="mx-auto max-w-5xl">
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
-            {error}
-          </div>
+      <div className="pb-12">
+        <div className="border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+          {error}
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {t('dashboardCore.settings.title')}
-          </h1>
+    <div className="pb-12 space-y-8">
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.15em] text-ink/40">
+          {settings?.name}
+        </p>
 
-          <p className="mt-1 text-gray-600">
-            {t('dashboardCore.settings.subtitle')}
-          </p>
+        <h1 className="font-display text-3xl mt-1">
+          {t('dashboardCore.settings.title')}
+        </h1>
+
+        <p className="text-sm text-ink/50 mt-2">
+          {t('dashboardCore.settings.subtitle')}
+        </p>
+      </div>
+
+      {message && (
+        <div className="border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {message}
         </div>
+      )}
 
-        {message && (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {message}
-          </div>
-        )}
+      {error && (
+        <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="border border-line rounded-xl p-5">
+          <h2 className={cardHeadingClass}>
+            {t('dashboardCore.settings.restaurantHeading')}
+          </h2>
 
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {t('dashboardCore.settings.restaurantHeading')}
-            </h2>
-
-            <p className="mt-1 text-sm text-gray-500">
-              {t('dashboardCore.settings.restaurantSubtitle')}
-            </p>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className={labelClass}>
                 {t('dashboardCore.settings.restaurantName')}
               </label>
 
               <input
                 value={settings?.name || ''}
                 disabled
-                className="w-full rounded-lg border bg-gray-100 px-3 py-2.5 text-gray-600"
+                className={disabledFieldClass}
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className={labelClass}>
                 {t('dashboardCore.settings.slug')}
               </label>
 
               <input
                 value={settings?.slug || ''}
                 disabled
-                className="w-full rounded-lg border bg-gray-100 px-3 py-2.5 text-gray-600"
+                className={disabledFieldClass}
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className={labelClass}>
                 {t('dashboardCore.settings.currency')}
               </label>
 
               <input
                 value={settings?.currency || ''}
                 disabled
-                className="w-full rounded-lg border bg-gray-100 px-3 py-2.5 text-gray-600"
+                className={disabledFieldClass}
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className={labelClass}>
                 {t('dashboardCore.settings.timezone')}
               </label>
 
               <input
                 value={settings?.timezone || ''}
                 disabled
-                className="w-full rounded-lg border bg-gray-100 px-3 py-2.5 text-gray-600"
+                className={disabledFieldClass}
               />
             </div>
           </div>
         </section>
 
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {t('dashboardCore.settings.googleReviewsHeading')}
-            </h2>
+        <section className="border border-line rounded-xl p-5">
+          <h2 className={cardHeadingClass}>
+            {t('dashboardCore.settings.googleReviewsHeading')}
+          </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
-              {t('dashboardCore.settings.googleReviewsSubtitle')}
-            </p>
-          </div>
-
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label className={labelClass}>
             {t('dashboardCore.settings.googleReviewUrlLabel')}
           </label>
 
@@ -413,191 +412,183 @@ export default function SettingsPage() {
               setGoogleReviewUrl(e.target.value)
             }
             placeholder="https://g.page/r/..."
-            className="w-full rounded-lg border px-3 py-2.5 outline-none focus:ring-2 focus:ring-gray-300"
+            className={inputClass}
           />
 
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-ink/50">
             {t('dashboardCore.settings.googleReviewHelp')}
           </p>
         </section>
+      </div>
 
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {t('dashboardCore.settings.slaHeading')}
-            </h2>
+      <section className="border border-line rounded-xl p-5">
+        <h2 className={cardHeadingClass}>
+          {t('dashboardCore.settings.slaHeading')}
+        </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
-              {t('dashboardCore.settings.slaSubtitle')}
+        <p className="text-xs text-ink/50 -mt-3 mb-4">
+          {t('dashboardCore.settings.slaSubtitle')}
+        </p>
+
+        <div className="grid gap-5 md:grid-cols-3">
+          <div>
+            <label className={labelClass}>
+              {t('dashboardCore.settings.acceptanceLabel')}
+            </label>
+
+            <input
+              type="number"
+              min="30"
+              max="1800"
+              value={acceptanceSla}
+              onChange={(e) =>
+                setAcceptanceSla(e.target.value)
+              }
+              placeholder="300"
+              className={inputClass}
+            />
+
+            <p className="mt-1 text-xs text-ink/50">
+              {t('dashboardCore.settings.staffResponseTime')}
             </p>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-3">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                {t('dashboardCore.settings.acceptanceLabel')}
-              </label>
+          <div>
+            <label className={labelClass}>
+              {t('dashboardCore.settings.acceptedLabel')}
+            </label>
 
-              <input
-                type="number"
-                min="30"
-                max="1800"
-                value={acceptanceSla}
-                onChange={(e) =>
-                  setAcceptanceSla(e.target.value)
-                }
-                placeholder="300"
-                className="w-full rounded-lg border px-3 py-2.5 outline-none focus:ring-2 focus:ring-gray-300"
-              />
+            <input
+              type="number"
+              min="60"
+              max="3600"
+              value={kitchenSla}
+              onChange={(e) =>
+                setKitchenSla(e.target.value)
+              }
+              placeholder="1200"
+              className={inputClass}
+            />
 
-              <p className="mt-1 text-xs text-gray-500">
-                {t('dashboardCore.settings.staffResponseTime')}
-              </p>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                {t('dashboardCore.settings.acceptedLabel')}
-              </label>
-
-              <input
-                type="number"
-                min="60"
-                max="3600"
-                value={kitchenSla}
-                onChange={(e) =>
-                  setKitchenSla(e.target.value)
-                }
-                placeholder="1200"
-                className="w-full rounded-lg border px-3 py-2.5 outline-none focus:ring-2 focus:ring-gray-300"
-              />
-
-              <p className="mt-1 text-xs text-gray-500">
-                {t('dashboardCore.settings.kitchenPrepTarget')}
-              </p>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                {t('dashboardCore.settings.readyLabel')}
-              </label>
-
-              <input
-                type="number"
-                min="30"
-                max="1800"
-                value={waiterSla}
-                onChange={(e) =>
-                  setWaiterSla(e.target.value)
-                }
-                placeholder="1800"
-                className="w-full rounded-lg border px-3 py-2.5 outline-none focus:ring-2 focus:ring-gray-300"
-              />
-
-              <p className="mt-1 text-xs text-gray-500">
-                {t('dashboardCore.settings.waiterDeliveryTarget')}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 rounded-lg bg-gray-50 p-4">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-700">
-                {t('dashboardCore.settings.totalServiceSla')}
-              </span>
-
-              <span className="text-lg font-bold text-gray-900">
-                {formatDuration(
-                  calculatedTotal,
-                  t('dashboardCore.settings.notConfigured')
-                )}
-              </span>
-            </div>
-
-            <p className="mt-1 text-xs text-gray-500">
-              {t('dashboardCore.settings.calculatedAutomatically')}
+            <p className="mt-1 text-xs text-ink/50">
+              {t('dashboardCore.settings.kitchenPrepTarget')}
             </p>
           </div>
-        </section>
 
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {t('dashboardCore.settings.currentStatusHeading')}
-            </h2>
+          <div>
+            <label className={labelClass}>
+              {t('dashboardCore.settings.readyLabel')}
+            </label>
+
+            <input
+              type="number"
+              min="30"
+              max="1800"
+              value={waiterSla}
+              onChange={(e) =>
+                setWaiterSla(e.target.value)
+              }
+              placeholder="1800"
+              className={inputClass}
+            />
+
+            <p className="mt-1 text-xs text-ink/50">
+              {t('dashboardCore.settings.waiterDeliveryTarget')}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-line pt-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">
+              {t('dashboardCore.settings.totalServiceSla')}
+            </span>
+
+            <span className="font-display text-lg">
+              {formatDuration(
+                calculatedTotal,
+                t('dashboardCore.settings.notConfigured')
+              )}
+            </span>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-lg border p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm text-gray-500">
-                    {t('dashboardCore.settings.restaurantStatusLabel')}
-                  </div>
+          <p className="mt-1 text-xs text-ink/50">
+            {t('dashboardCore.settings.calculatedAutomatically')}
+          </p>
+        </div>
+      </section>
 
-                  <div className="mt-1 font-semibold text-gray-900">
-                    {settings?.isOpen
-                      ? t('dashboardCore.settings.open')
-                      : t('dashboardCore.settings.closed')}
-                  </div>
+      <section className="border border-line rounded-xl p-5">
+        <h2 className={cardHeadingClass}>
+          {t('dashboardCore.settings.currentStatusHeading')}
+        </h2>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="border border-line rounded-lg p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-xs text-ink/50">
+                  {t('dashboardCore.settings.restaurantStatusLabel')}
                 </div>
 
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={settings?.isOpen ?? false}
-                  disabled={!settings || togglingOpen}
-                  onClick={() =>
-                    void toggleOpen(!settings?.isOpen)
-                  }
-                  className={`relative shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-50 ${
-                    settings?.isOpen
-                      ? 'bg-black'
-                      : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                      settings?.isOpen
-                        ? 'translate-x-5'
-                        : ''
-                    }`}
-                  />
-                </button>
+                <div className="mt-1 text-sm font-medium">
+                  {settings?.isOpen
+                    ? t('dashboardCore.settings.open')
+                    : t('dashboardCore.settings.closed')}
+                </div>
               </div>
 
-              <p className="mt-2 text-xs text-gray-500">
-                {t('dashboardCore.settings.restaurantStatusDescription')}
-              </p>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings?.isOpen ?? false}
+                disabled={!settings || togglingOpen}
+                onClick={() =>
+                  void toggleOpen(!settings?.isOpen)
+                }
+                className={`relative shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-50 ${
+                  settings?.isOpen ? 'bg-ink' : 'bg-ink/20'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                    settings?.isOpen ? 'translate-x-5' : ''
+                  }`}
+                />
+              </button>
             </div>
 
-            <div className="rounded-lg border p-4">
-              <div className="text-sm text-gray-500">
-                {t('dashboardCore.settings.accountLabel')}
-              </div>
+            <p className="mt-2 text-xs text-ink/50">
+              {t('dashboardCore.settings.restaurantStatusDescription')}
+            </p>
+          </div>
 
-              <div className="mt-1 font-semibold text-gray-900">
-                {settings?.isActive
-                  ? t('common.active')
-                  : t('common.inactive')}
-              </div>
+          <div className="border border-line rounded-lg p-4">
+            <div className="text-xs text-ink/50">
+              {t('dashboardCore.settings.accountLabel')}
+            </div>
+
+            <div className="mt-1 text-sm font-medium">
+              {settings?.isActive
+                ? t('common.active')
+                : t('common.inactive')}
             </div>
           </div>
-        </section>
-
-        <div className="flex justify-end pb-8">
-          <button
-            type="button"
-            onClick={saveSettings}
-            disabled={saving}
-            className="rounded-lg bg-black px-6 py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saving
-              ? t('common.saving')
-              : t('dashboardCore.settings.saveSettings')}
-          </button>
         </div>
+      </section>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={saveSettings}
+          disabled={saving}
+          className="bg-ink text-white text-sm font-medium rounded-lg px-6 py-2.5 disabled:opacity-50"
+        >
+          {saving
+            ? t('common.saving')
+            : t('dashboardCore.settings.saveSettings')}
+        </button>
       </div>
-    </main>
+    </div>
   );
 }

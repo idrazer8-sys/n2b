@@ -2,6 +2,7 @@ import type { Locale } from '../locales';
 
 export const cashDrawer: Record<Locale, Record<string, string>> = {
   es: {
+    'cashDrawer.eyebrow': 'Gestión',
     'cashDrawer.title': 'Caja',
     'cashDrawer.subtitle': 'Cuenta manual del efectivo que hay en caja, por billete y moneda.',
     'cashDrawer.note': 'Este conteo es manual y no se compara automáticamente con las ventas en efectivo registradas.',
@@ -17,6 +18,7 @@ export const cashDrawer: Record<Locale, Record<string, string>> = {
     'cashDrawer.lastUpdated': 'Última actualización',
   },
   en: {
+    'cashDrawer.eyebrow': 'Management',
     'cashDrawer.title': 'Cash drawer',
     'cashDrawer.subtitle': 'Manually count the cash on hand, by bill and coin.',
     'cashDrawer.note': 'This is a manual count — it is not automatically reconciled against recorded cash sales.',
@@ -32,6 +34,7 @@ export const cashDrawer: Record<Locale, Record<string, string>> = {
     'cashDrawer.lastUpdated': 'Last updated',
   },
   pt: {
+    'cashDrawer.eyebrow': 'Gestão',
     'cashDrawer.title': 'Caixa',
     'cashDrawer.subtitle': 'Conte manualmente o dinheiro em caixa, por nota e moeda.',
     'cashDrawer.note': 'Esta é uma contagem manual — não é reconciliada automaticamente com as vendas em dinheiro registradas.',
@@ -47,6 +50,7 @@ export const cashDrawer: Record<Locale, Record<string, string>> = {
     'cashDrawer.lastUpdated': 'Última atualização',
   },
   de: {
+    'cashDrawer.eyebrow': 'Verwaltung',
     'cashDrawer.title': 'Kasse',
     'cashDrawer.subtitle': 'Zähle das Bargeld in der Kasse manuell, nach Scheinen und Münzen.',
     'cashDrawer.note': 'Dies ist eine manuelle Zählung — sie wird nicht automatisch mit erfassten Barverkäufen abgeglichen.',
@@ -62,6 +66,7 @@ export const cashDrawer: Record<Locale, Record<string, string>> = {
     'cashDrawer.lastUpdated': 'Zuletzt aktualisiert',
   },
   fr: {
+    'cashDrawer.eyebrow': 'Gestion',
     'cashDrawer.title': 'Caisse',
     'cashDrawer.subtitle': 'Comptez manuellement les espèces en caisse, par billet et par pièce.',
     'cashDrawer.note': 'Ce comptage est manuel — il n\'est pas rapproché automatiquement des ventes en espèces enregistrées.',

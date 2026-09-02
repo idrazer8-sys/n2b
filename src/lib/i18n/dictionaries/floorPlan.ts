@@ -7,6 +7,7 @@ import type { Locale } from '../locales';
 export const floorPlan: Record<Locale, Record<string, string>> = {
   es: {
     'floorPlan.title': 'Piso',
+    'floorPlan.managerEyebrow': 'Gestión',
     'floorPlan.subtitleManager': 'Diseña y gestiona el plano de tu sala.',
     'floorPlan.subtitleWaiter': 'Vista general de la sala.',
     'floorPlan.toolbar.addTable': 'Mesa',
@@ -67,6 +68,7 @@ export const floorPlan: Record<Locale, Record<string, string>> = {
   },
   en: {
     'floorPlan.title': 'Floor plan',
+    'floorPlan.managerEyebrow': 'Management',
     'floorPlan.subtitleManager': 'Design and manage your floor layout.',
     'floorPlan.subtitleWaiter': 'Overview of the dining room.',
     'floorPlan.toolbar.addTable': 'Table',
@@ -127,6 +129,7 @@ export const floorPlan: Record<Locale, Record<string, string>> = {
   },
   pt: {
     'floorPlan.title': 'Piso',
+    'floorPlan.managerEyebrow': 'Gestão',
     'floorPlan.subtitleManager': 'Desenhe e gerencie o layout da sua sala.',
     'floorPlan.subtitleWaiter': 'Visão geral da sala.',
     'floorPlan.toolbar.addTable': 'Mesa',
@@ -187,6 +190,7 @@ export const floorPlan: Record<Locale, Record<string, string>> = {
   },
   de: {
     'floorPlan.title': 'Sitzplan',
+    'floorPlan.managerEyebrow': 'Verwaltung',
     'floorPlan.subtitleManager': 'Gestalte und verwalte den Grundriss deines Restaurants.',
     'floorPlan.subtitleWaiter': 'Überblick über den Gastraum.',
     'floorPlan.toolbar.addTable': 'Tisch',
@@ -247,6 +251,7 @@ export const floorPlan: Record<Locale, Record<string, string>> = {
   },
   fr: {
     'floorPlan.title': 'Plan de salle',
+    'floorPlan.managerEyebrow': 'Gestion',
     'floorPlan.subtitleManager': 'Concevez et gérez le plan de votre salle.',
     'floorPlan.subtitleWaiter': 'Vue d\'ensemble de la salle.',
     'floorPlan.toolbar.addTable': 'Table',
