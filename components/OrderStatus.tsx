@@ -43,6 +43,8 @@ type Order = {
     nameSnapshot: string;
     quantity: number;
     lineTotalCents: number;
+    status?: 'PENDING' | 'SERVED' | 'UNAVAILABLE';
+    unavailableNote?: string | null;
   }[];
   restaurant: {
     slug: string;
@@ -690,24 +692,51 @@ export default function OrderStatus({
         <ul className="space-y-1.5 text-sm">
           {order.items.map(
             (item, index) => (
-              <li
-                key={index}
-                className="flex items-baseline"
-              >
-                <span className="text-ink/50 w-6 tabular">
-                  {t('customerFlow.cart.quantityPrefix', { quantity: item.quantity })}
-                </span>
+              <li key={index}>
+                <div
+                  className={`flex items-baseline ${
+                    item.status === 'UNAVAILABLE'
+                      ? 'text-ink/35'
+                      : ''
+                  }`}
+                >
+                  <span className="text-ink/50 w-6 tabular">
+                    {t('customerFlow.cart.quantityPrefix', { quantity: item.quantity })}
+                  </span>
 
-                <span className="flex-1">
-                  {item.nameSnapshot}
-                </span>
+                  <span
+                    className={`flex-1 ${
+                      item.status === 'UNAVAILABLE'
+                        ? 'line-through'
+                        : ''
+                    }`}
+                  >
+                    {item.nameSnapshot}
+                  </span>
 
-                <span className="tabular">
-                  {formatCents(
-                    item.lineTotalCents,
-                    order.currency
-                  )}
-                </span>
+                  <span
+                    className={`tabular ${
+                      item.status === 'UNAVAILABLE'
+                        ? 'line-through'
+                        : ''
+                    }`}
+                  >
+                    {formatCents(
+                      item.lineTotalCents,
+                      order.currency
+                    )}
+                  </span>
+                </div>
+
+                {item.status === 'UNAVAILABLE' && (
+                  <p className="text-xs text-[#b0392f] mt-0.5">
+                    {item.unavailableNote
+                      ? t('customerFlow.order.itemUnavailableWithNote', {
+                          note: item.unavailableNote,
+                        })
+                      : t('customerFlow.order.itemUnavailable')}
+                  </p>
+                )}
               </li>
             )
           )}
@@ -726,6 +755,15 @@ export default function OrderStatus({
           </span>
         </div>
       </div>
+
+      {!order.session.paid && !paymentRequested && (
+        <a
+          href={`/r/${order.restaurant.slug}?t=${order.table.token}`}
+          className="mt-4 block w-full border border-line rounded-xl py-3 text-center text-sm font-medium"
+        >
+          {t('customerFlow.order.orderMore')}
+        </a>
+      )}
 
       {showWaiting && (
         <div className="mt-7 border border-line rounded-xl p-4">

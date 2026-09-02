@@ -33,6 +33,7 @@ type Order = {
     nameSnapshot: string;
     quantity: number;
     notes: string | null;
+    status: 'PENDING' | 'SERVED' | 'UNAVAILABLE';
   }[];
 };
 
@@ -65,14 +66,20 @@ function KitchenOrderCard({
   updating,
   actionLabel,
   onAction,
+  markingItemId,
+  onMarkItemUnavailable,
 }: {
   order: Order;
   currency: string;
   updating: boolean;
   actionLabel: string;
   onAction: () => void;
+  markingItemId: string | null;
+  onMarkItemUnavailable: (itemId: string, note: string) => void;
 }) {
   const { t } = useI18n();
+  const [notePromptItemId, setNotePromptItemId] = useState<string | null>(null);
+  const [note, setNote] = useState('');
 
   return (
     <article className="border border-white/10 bg-white/[0.04] p-5">
@@ -106,15 +113,68 @@ function KitchenOrderCard({
                 {item.quantity} ×
               </span>
 
-              <span className="flex-1 font-display text-xl">
+              <span
+                className={`flex-1 font-display text-xl ${
+                  item.status === 'UNAVAILABLE'
+                    ? 'line-through text-white/30'
+                    : ''
+                }`}
+              >
                 {item.nameSnapshot}
               </span>
+
+              {item.status === 'UNAVAILABLE' ? (
+                <span className="text-[10px] uppercase tracking-[0.08em] text-[#e2a5a5]">
+                  {t('staffMisc.kitchen.itemUnavailable')}
+                </span>
+              ) : notePromptItemId === item.id ? null : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotePromptItemId(item.id);
+                    setNote('');
+                  }}
+                  className="text-[10px] uppercase tracking-[0.08em] text-white/40 hover:text-[#e2a5a5] shrink-0"
+                >
+                  {t('staffMisc.kitchen.markUnavailable')}
+                </button>
+              )}
             </div>
 
             {item.notes && (
               <p className="ml-8 mt-2 border-l border-[#c39a62] pl-3 text-sm italic text-[#e2c7a2]">
                 {item.notes}
               </p>
+            )}
+
+            {notePromptItemId === item.id && (
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder={t('staffMisc.kitchen.unavailableNotePlaceholder')}
+                  className="flex-1 bg-white/5 border border-white/15 px-2.5 py-1.5 text-xs text-white placeholder:text-white/30"
+                />
+                <button
+                  type="button"
+                  disabled={markingItemId === item.id}
+                  onClick={() => {
+                    onMarkItemUnavailable(item.id, note);
+                    setNotePromptItemId(null);
+                  }}
+                  className="text-[10px] uppercase tracking-[0.08em] bg-[#9b554a] text-white px-2.5 py-1.5 disabled:opacity-50 shrink-0"
+                >
+                  {t('staffMisc.kitchen.confirmUnavailable')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNotePromptItemId(null)}
+                  className="text-[10px] uppercase tracking-[0.08em] text-white/40 shrink-0"
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
             )}
           </div>
         ))}
@@ -155,6 +215,7 @@ export default function KitchenPage() {
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [markingItemId, setMarkingItemId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -338,6 +399,50 @@ export default function KitchenPage() {
     }
   }
 
+  async function markItemUnavailable(
+    orderId: string,
+    itemId: string,
+    note: string
+  ) {
+    try {
+      setMarkingItemId(itemId);
+      setError(null);
+
+      const response = await fetch(
+        `/api/restaurants/${restaurantId}/orders/${orderId}/items/${itemId}`,
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'UNAVAILABLE',
+            note: note || undefined,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ?? t('staffMisc.kitchen.couldNotUpdateOrder')
+        );
+      }
+
+      await load();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('staffMisc.kitchen.couldNotUpdateOrder')
+      );
+    } finally {
+      setMarkingItemId(null);
+    }
+  }
+
   const newOrders = orders.filter(
     (order) => order.status === 'NEW'
   );
@@ -475,6 +580,10 @@ export default function KitchenPage() {
                         'ACCEPTED'
                       )
                     }
+                    markingItemId={markingItemId}
+                    onMarkItemUnavailable={(itemId, note) =>
+                      void markItemUnavailable(order.id, itemId, note)
+                    }
                   />
                 ))
               )}
@@ -511,6 +620,10 @@ export default function KitchenPage() {
                         'PREPARING'
                       )
                     }
+                    markingItemId={markingItemId}
+                    onMarkItemUnavailable={(itemId, note) =>
+                      void markItemUnavailable(order.id, itemId, note)
+                    }
                   />
                 ))
               )}
@@ -546,6 +659,10 @@ export default function KitchenPage() {
                         order.id,
                         'READY'
                       )
+                    }
+                    markingItemId={markingItemId}
+                    onMarkItemUnavailable={(itemId, note) =>
+                      void markItemUnavailable(order.id, itemId, note)
                     }
                   />
                 ))

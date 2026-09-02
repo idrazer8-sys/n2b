@@ -255,19 +255,29 @@ model Order {
 }
 
 model OrderItem {
-  id             String              @id @default(cuid())
-  orderId        String
-  menuItemId     String
-  nameSnapshot   String
-  unitPriceCents Int
-  quantity       Int
-  lineTotalCents Int
-  notes          String?
-  menuItem       MenuItem            @relation(fields: [menuItemId], references: [id])
-  order          Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  modifiers      OrderItemModifier[]
+  id              String              @id @default(cuid())
+  orderId         String
+  menuItemId      String
+  nameSnapshot    String
+  unitPriceCents  Int
+  quantity        Int
+  lineTotalCents  Int
+  notes           String?
+  status          OrderItemStatus     @default(PENDING)
+  servedAt        DateTime?
+  unavailableAt   DateTime?
+  unavailableNote String?
+  menuItem        MenuItem            @relation(fields: [menuItemId], references: [id])
+  order           Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  modifiers       OrderItemModifier[]
 
   @@index([orderId])
+}
+
+enum OrderItemStatus {
+  PENDING
+  SERVED
+  UNAVAILABLE
 }
 
 model OrderItemModifier {
@@ -415,6 +425,8 @@ enum OrderEventType {
   ORDER_COMPLETED
   ORDER_CANCELLED
   ORDER_CLAIMED
+  ITEM_SERVED
+  ITEM_UNAVAILABLE
   PAYMENT_STARTED
   PAYMENT_SUCCEEDED
   PAYMENT_FAILED

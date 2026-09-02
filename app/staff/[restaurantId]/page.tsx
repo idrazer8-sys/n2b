@@ -62,6 +62,7 @@ type OrderItem = {
   quantity: number;
   unitPriceCents: number;
   modifiers?: OrderModifier[];
+  status?: 'PENDING' | 'SERVED' | 'UNAVAILABLE';
 };
 
 type OrderStaff = {
@@ -278,6 +279,14 @@ function normalizeOrders(
             'number'
               ? item.unitPriceCents
               : 0,
+
+          status:
+            item.status ===
+              'SERVED' ||
+            item.status ===
+              'UNAVAILABLE'
+              ? item.status
+              : 'PENDING',
 
           modifiers:
             rawModifiers.map(
@@ -599,6 +608,14 @@ export default function StaffOrdersPage() {
   const [
     updatingOrderId,
     setUpdatingOrderId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    markingItemId,
+    setMarkingItemId,
   ] =
     useState<string | null>(
       null
@@ -1239,6 +1256,71 @@ export default function StaffOrdersPage() {
       );
     } finally {
       setUpdatingOrderId(
+        null
+      );
+    }
+  }
+
+  async function markItemServed(
+    order: StaffOrder,
+    item: OrderItem
+  ) {
+    if (
+      order.staffId !==
+      me?.staffId
+    ) {
+      setError(
+        t('staffPortal.errors.orderNotAssigned')
+      );
+      return;
+    }
+
+    try {
+      setMarkingItemId(
+        item.id
+      );
+
+      setError(null);
+
+      const response =
+        await fetch(
+          `/api/restaurants/${restaurantId}/orders/${order.id}/items/${item.id}`,
+          {
+            method: 'PATCH',
+            credentials:
+              'include',
+            headers: {
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              action:
+                'SERVE',
+            }),
+          }
+        );
+
+      const result =
+        await response
+          .json()
+          .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ??
+            t('staffPortal.errors.markServed')
+        );
+      }
+
+      await loadData(true);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('staffPortal.errors.markServed')
+      );
+    } finally {
+      setMarkingItemId(
         null
       );
     }
@@ -2017,7 +2099,7 @@ export default function StaffOrdersPage() {
                               key={
                                 item.id
                               }
-                              className="flex gap-3"
+                              className="flex items-center gap-3"
                             >
                               <span className="text-sm text-[#1A134D]/50 w-10">
                                 {item.quantity}
@@ -2025,7 +2107,14 @@ export default function StaffOrdersPage() {
                               </span>
 
                               <div className="flex-1">
-                                <p className="font-display text-lg">
+                                <p
+                                  className={`font-display text-lg ${
+                                    item.status ===
+                                    'UNAVAILABLE'
+                                      ? 'line-through text-[#1A134D]/35'
+                                      : ''
+                                  }`}
+                                >
                                   {item.nameSnapshot ??
                                     t('staffPortal.common.itemFallback')}
                                 </p>
@@ -2057,6 +2146,44 @@ export default function StaffOrdersPage() {
                                   currency
                                 )}
                               </span>
+
+                              {mine &&
+                                item.status ===
+                                  'PENDING' && (
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      markingItemId ===
+                                      item.id
+                                    }
+                                    onClick={() =>
+                                      void markItemServed(
+                                        order,
+                                        item
+                                      )
+                                    }
+                                    className="shrink-0 border border-[#1A134D]/20 rounded-lg px-2.5 py-1.5 text-[10px] uppercase tracking-[0.06em] text-[#1A134D]/70 disabled:opacity-40"
+                                  >
+                                    {markingItemId ===
+                                    item.id
+                                      ? t('staffPortal.actions.updating')
+                                      : t('staffPortal.actions.markItemServed')}
+                                  </button>
+                                )}
+
+                              {item.status ===
+                                'SERVED' && (
+                                <span className="shrink-0 text-[10px] uppercase tracking-[0.06em] text-[#477052]">
+                                  {t('staffPortal.actions.itemServedLabel')}
+                                </span>
+                              )}
+
+                              {item.status ===
+                                'UNAVAILABLE' && (
+                                <span className="shrink-0 text-[10px] uppercase tracking-[0.06em] text-[#9b554a]">
+                                  {t('staffPortal.actions.itemUnavailableLabel')}
+                                </span>
+                              )}
                             </div>
                           )
                         )}

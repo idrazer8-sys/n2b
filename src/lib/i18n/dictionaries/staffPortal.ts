@@ -56,6 +56,9 @@ export const staffPortal: Record<Locale, Record<string, string>> = {
     'staffPortal.actions.takeOrder': 'Tomar pedido',
     'staffPortal.actions.taking': 'Tomando...',
     'staffPortal.actions.markServed': 'Marcar servido',
+    'staffPortal.actions.markItemServed': 'Servido',
+    'staffPortal.actions.itemServedLabel': 'Servido',
+    'staffPortal.actions.itemUnavailableLabel': 'No disponible',
     'staffPortal.actions.updating': 'Actualizando...',
 
     'staffPortal.header.waiterFallback': 'Camarero',
@@ -165,6 +168,9 @@ export const staffPortal: Record<Locale, Record<string, string>> = {
     'staffPortal.actions.takeOrder': 'Take order',
     'staffPortal.actions.taking': 'Taking...',
     'staffPortal.actions.markServed': 'Mark served',
+    'staffPortal.actions.markItemServed': 'Served',
+    'staffPortal.actions.itemServedLabel': 'Served',
+    'staffPortal.actions.itemUnavailableLabel': 'Unavailable',
     'staffPortal.actions.updating': 'Updating...',
 
     'staffPortal.header.waiterFallback': 'Waiter',
@@ -274,6 +280,9 @@ export const staffPortal: Record<Locale, Record<string, string>> = {
     'staffPortal.actions.takeOrder': 'Assumir pedido',
     'staffPortal.actions.taking': 'A assumir...',
     'staffPortal.actions.markServed': 'Marcar como servido',
+    'staffPortal.actions.markItemServed': 'Servido',
+    'staffPortal.actions.itemServedLabel': 'Servido',
+    'staffPortal.actions.itemUnavailableLabel': 'Indisponível',
     'staffPortal.actions.updating': 'A atualizar...',
 
     'staffPortal.header.waiterFallback': 'Empregado de mesa',
@@ -383,6 +392,9 @@ export const staffPortal: Record<Locale, Record<string, string>> = {
     'staffPortal.actions.takeOrder': 'Bestellung übernehmen',
     'staffPortal.actions.taking': 'Wird übernommen...',
     'staffPortal.actions.markServed': 'Als serviert markieren',
+    'staffPortal.actions.markItemServed': 'Serviert',
+    'staffPortal.actions.itemServedLabel': 'Serviert',
+    'staffPortal.actions.itemUnavailableLabel': 'Nicht verfügbar',
     'staffPortal.actions.updating': 'Wird aktualisiert...',
 
     'staffPortal.header.waiterFallback': 'Kellner',
@@ -492,6 +504,9 @@ export const staffPortal: Record<Locale, Record<string, string>> = {
     'staffPortal.actions.takeOrder': 'Prendre la commande',
     'staffPortal.actions.taking': 'Prise en cours...',
     'staffPortal.actions.markServed': 'Marquer comme servie',
+    'staffPortal.actions.markItemServed': 'Servi',
+    'staffPortal.actions.itemServedLabel': 'Servi',
+    'staffPortal.actions.itemUnavailableLabel': 'Indisponible',
     'staffPortal.actions.updating': 'Mise à jour...',
 
     'staffPortal.header.waiterFallback': 'Serveur',
