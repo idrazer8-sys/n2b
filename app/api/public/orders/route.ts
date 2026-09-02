@@ -232,7 +232,12 @@ export async function POST(req: NextRequest) {
         });
 
         return createdOrder;
-      }
+      },
+      // A burst of simultaneous orders for the same restaurant serializes
+      // on the nextOrderNumber row lock — later ones in the queue can
+      // outlive Prisma's 5s default interactive-transaction timeout while
+      // just waiting their turn, not because any single query is slow.
+      { timeout: 15000 }
     );
 
     publishOrderEvent(
