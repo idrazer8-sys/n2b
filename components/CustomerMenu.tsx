@@ -985,7 +985,7 @@ function CartDrawer({
 
                 {line.notes && (
                   <p className="ml-7 mt-1 text-xs italic text-[#29251f]/40">
-                    "{line.notes}"
+                    &ldquo;{line.notes}&rdquo;
                   </p>
                 )}
 
