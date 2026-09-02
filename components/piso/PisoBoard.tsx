@@ -283,39 +283,54 @@ export default function PisoBoard({
     return map;
   }, [statuses]);
 
+  const fetchLayoutOnce = useCallback(async () => {
+    const [tablesRes, zonesRes] = await Promise.all([
+      fetch(`/api/restaurants/${restaurantId}/tables`, {
+        credentials: 'include',
+        cache: 'no-store',
+      }),
+      fetch(`/api/restaurants/${restaurantId}/table-zones`, {
+        credentials: 'include',
+        cache: 'no-store',
+      }),
+    ]);
+
+    if (!tablesRes.ok || !zonesRes.ok) return null;
+
+    const tablesJson = await tablesRes.json().catch(() => []);
+    const zonesJson = await zonesRes.json().catch(() => []);
+    return { tablesJson, zonesJson };
+  }, [restaurantId]);
+
   const loadLayout = useCallback(async () => {
     try {
-      const [tablesRes, zonesRes] = await Promise.all([
-        fetch(`/api/restaurants/${restaurantId}/tables`, {
-          credentials: 'include',
-          cache: 'no-store',
-        }),
-        fetch(`/api/restaurants/${restaurantId}/table-zones`, {
-          credentials: 'include',
-          cache: 'no-store',
-        }),
-      ]);
+      // The very first request on a fresh session can 401 transiently
+      // (auth cold-start) even though the session is valid — one quick
+      // retry avoids surfacing a scary error for what fixes itself
+      // immediately after.
+      let result = await fetchLayoutOnce();
+      if (!result) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        result = await fetchLayoutOnce();
+      }
 
-      const tablesJson = await tablesRes.json().catch(() => []);
-      const zonesJson = await zonesRes.json().catch(() => []);
-
-      if (!tablesRes.ok || !zonesRes.ok) {
+      if (!result) {
         throw new Error(t('floorPlan.error'));
       }
 
       setTables(
-        (Array.isArray(tablesJson) ? tablesJson : []).filter(
+        (Array.isArray(result.tablesJson) ? result.tablesJson : []).filter(
           (row: TableRow) => row.isActive
         )
       );
-      setZones(Array.isArray(zonesJson) ? zonesJson : []);
+      setZones(Array.isArray(result.zonesJson) ? result.zonesJson : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('floorPlan.error'));
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, t]);
+  }, [fetchLayoutOnce, t]);
 
   const loadStatuses = useCallback(async () => {
     try {
