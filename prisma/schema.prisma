@@ -60,6 +60,11 @@ model Restaurant {
   isActive               Boolean           @default(true)
   allowPayAtRestaurant   Boolean           @default(true)
   reservationBufferMinutes Int             @default(15)
+  // Atomically incremented to hand out the next order number per
+  // restaurant. Reading MAX(orderNumber)+1 at request time raced under
+  // concurrent orders (two requests could read the same max before either
+  // committed) and threw a unique constraint error, dropping the order.
+  nextOrderNumber        Int               @default(1001)
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
   googleReviewUrl        String?

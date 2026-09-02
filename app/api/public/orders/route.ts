@@ -102,22 +102,29 @@ export async function POST(req: NextRequest) {
 
     const order = await db.$transaction(
       async (tx) => {
-        const last =
-          await tx.order.findFirst({
+        // Atomically claim the next order number. Postgres serializes
+        // concurrent UPDATEs to the same row, so two simultaneous orders
+        // can never be handed the same number the way a separate
+        // "read MAX(orderNumber), then insert +1" could (and did, under
+        // load — a unique constraint violation that dropped the order).
+        const restaurantWithNumber =
+          await tx.restaurant.update({
             where: {
-              restaurantId:
-                restaurant.id,
+              id: restaurant.id,
             },
-            orderBy: {
-              orderNumber: 'desc',
+            data: {
+              nextOrderNumber: {
+                increment: 1,
+              },
             },
             select: {
-              orderNumber: true,
+              nextOrderNumber: true,
             },
           });
 
         const orderNumber =
-          (last?.orderNumber ?? 1000) + 1;
+          restaurantWithNumber.nextOrderNumber -
+          1;
 
         // Snapshot the PRIMARY waiter currently
         // assigned to this table.
