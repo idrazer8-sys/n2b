@@ -111,6 +111,12 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.kitchen.nothingCooking':
       'No hay nada en preparación ahora mismo.',
     'staffMisc.kitchen.acceptOrder': 'Aceptar pedido',
+    'staffMisc.kitchen.rejectOrder': 'Rechazar pedido',
+    'staffMisc.kitchen.cancelOrder': 'Cancelar pedido',
+    'staffMisc.kitchen.confirmRejectOrder':
+      '¿Rechazar este pedido? El cliente lo verá como rechazado y no podrá deshacerse.',
+    'staffMisc.kitchen.confirmCancelOrder':
+      '¿Cancelar este pedido? El cliente lo verá como cancelado y no podrá deshacerse.',
     'staffMisc.kitchen.markUnavailable': 'No disponible',
     'staffMisc.kitchen.unavailableNotePlaceholder': 'Motivo (opcional)',
     'staffMisc.kitchen.confirmUnavailable': 'Confirmar',
@@ -222,6 +228,12 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.kitchen.noAcceptedOrders': 'No accepted orders.',
     'staffMisc.kitchen.nothingCooking': 'Nothing cooking right now.',
     'staffMisc.kitchen.acceptOrder': 'Accept order',
+    'staffMisc.kitchen.rejectOrder': 'Reject order',
+    'staffMisc.kitchen.cancelOrder': 'Cancel order',
+    'staffMisc.kitchen.confirmRejectOrder':
+      'Reject this order? The customer will see it as rejected — this cannot be undone.',
+    'staffMisc.kitchen.confirmCancelOrder':
+      'Cancel this order? The customer will see it as cancelled — this cannot be undone.',
     'staffMisc.kitchen.markUnavailable': 'Unavailable',
     'staffMisc.kitchen.unavailableNotePlaceholder': 'Reason (optional)',
     'staffMisc.kitchen.confirmUnavailable': 'Confirm',
@@ -342,6 +354,12 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.kitchen.nothingCooking':
       'Não há nada em preparação neste momento.',
     'staffMisc.kitchen.acceptOrder': 'Aceitar pedido',
+    'staffMisc.kitchen.rejectOrder': 'Recusar pedido',
+    'staffMisc.kitchen.cancelOrder': 'Cancelar pedido',
+    'staffMisc.kitchen.confirmRejectOrder':
+      'Recusar este pedido? O cliente verá como recusado e não poderá ser desfeito.',
+    'staffMisc.kitchen.confirmCancelOrder':
+      'Cancelar este pedido? O cliente verá como cancelado e não poderá ser desfeito.',
     'staffMisc.kitchen.markUnavailable': 'Indisponível',
     'staffMisc.kitchen.unavailableNotePlaceholder': 'Motivo (opcional)',
     'staffMisc.kitchen.confirmUnavailable': 'Confirmar',
@@ -463,6 +481,12 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.kitchen.noAcceptedOrders': 'Keine angenommenen Bestellungen.',
     'staffMisc.kitchen.nothingCooking': 'Gerade wird nichts zubereitet.',
     'staffMisc.kitchen.acceptOrder': 'Bestellung annehmen',
+    'staffMisc.kitchen.rejectOrder': 'Bestellung ablehnen',
+    'staffMisc.kitchen.cancelOrder': 'Bestellung stornieren',
+    'staffMisc.kitchen.confirmRejectOrder':
+      'Diese Bestellung ablehnen? Der Kunde sieht sie als abgelehnt — das kann nicht rückgängig gemacht werden.',
+    'staffMisc.kitchen.confirmCancelOrder':
+      'Diese Bestellung stornieren? Der Kunde sieht sie als storniert — das kann nicht rückgängig gemacht werden.',
     'staffMisc.kitchen.markUnavailable': 'Nicht verfügbar',
     'staffMisc.kitchen.unavailableNotePlaceholder': 'Grund (optional)',
     'staffMisc.kitchen.confirmUnavailable': 'Bestätigen',
@@ -583,6 +607,12 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.kitchen.noAcceptedOrders': 'Aucune commande acceptée.',
     'staffMisc.kitchen.nothingCooking': 'Rien en préparation pour le moment.',
     'staffMisc.kitchen.acceptOrder': 'Accepter la commande',
+    'staffMisc.kitchen.rejectOrder': 'Refuser la commande',
+    'staffMisc.kitchen.cancelOrder': 'Annuler la commande',
+    'staffMisc.kitchen.confirmRejectOrder':
+      'Refuser cette commande ? Le client la verra comme refusée — action irréversible.',
+    'staffMisc.kitchen.confirmCancelOrder':
+      'Annuler cette commande ? Le client la verra comme annulée — action irréversible.',
     'staffMisc.kitchen.markUnavailable': 'Indisponible',
     'staffMisc.kitchen.unavailableNotePlaceholder': 'Motif (facultatif)',
     'staffMisc.kitchen.confirmUnavailable': 'Confirmer',

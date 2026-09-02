@@ -79,6 +79,8 @@ function KitchenOrderCard({
   onSendItemToWaiter,
   secondaryActionLabel,
   onSecondaryAction,
+  dangerActionLabel,
+  onDangerAction,
 }: {
   order: Order;
   currency: string;
@@ -90,6 +92,8 @@ function KitchenOrderCard({
   onSendItemToWaiter: (itemId: string) => void;
   secondaryActionLabel?: string;
   onSecondaryAction?: () => void;
+  dangerActionLabel?: string;
+  onDangerAction?: () => void;
 }) {
   const { t } = useI18n();
   const [notePromptItemId, setNotePromptItemId] = useState<string | null>(null);
@@ -231,6 +235,17 @@ function KitchenOrderCard({
         </span>
 
         <div className="flex items-center gap-2">
+          {dangerActionLabel && onDangerAction && (
+            <button
+              type="button"
+              disabled={updating}
+              onClick={onDangerAction}
+              className="border border-[#9b554a]/50 px-4 py-3 text-sm font-medium text-[#e2a5a5] disabled:opacity-50"
+            >
+              {dangerActionLabel}
+            </button>
+          )}
+
           {secondaryActionLabel && onSecondaryAction && (
             <button
               type="button"
@@ -416,7 +431,7 @@ export default function KitchenPage() {
 
   async function updateOrder(
     orderId: string,
-    status: 'ACCEPTED' | 'PREPARING' | 'READY'
+    status: 'ACCEPTED' | 'PREPARING' | 'READY' | 'REJECTED' | 'CANCELLED'
   ) {
     try {
       setUpdating(orderId);
@@ -694,6 +709,16 @@ export default function KitchenPage() {
                         ? () => updateOrder(order.id, 'READY')
                         : undefined
                     }
+                    dangerActionLabel={t('staffMisc.kitchen.rejectOrder')}
+                    onDangerAction={() => {
+                      if (
+                        window.confirm(
+                          t('staffMisc.kitchen.confirmRejectOrder')
+                        )
+                      ) {
+                        void updateOrder(order.id, 'REJECTED');
+                      }
+                    }}
                   />
                 ))
               )}
@@ -737,6 +762,16 @@ export default function KitchenPage() {
                     onSendItemToWaiter={(itemId) =>
                       void markItemSentToWaiter(order.id, itemId)
                     }
+                    dangerActionLabel={t('staffMisc.kitchen.cancelOrder')}
+                    onDangerAction={() => {
+                      if (
+                        window.confirm(
+                          t('staffMisc.kitchen.confirmCancelOrder')
+                        )
+                      ) {
+                        void updateOrder(order.id, 'CANCELLED');
+                      }
+                    }}
                   />
                 ))
               )}
@@ -780,6 +815,16 @@ export default function KitchenPage() {
                     onSendItemToWaiter={(itemId) =>
                       void markItemSentToWaiter(order.id, itemId)
                     }
+                    dangerActionLabel={t('staffMisc.kitchen.cancelOrder')}
+                    onDangerAction={() => {
+                      if (
+                        window.confirm(
+                          t('staffMisc.kitchen.confirmCancelOrder')
+                        )
+                      ) {
+                        void updateOrder(order.id, 'CANCELLED');
+                      }
+                    }}
                   />
                 ))
               )}
