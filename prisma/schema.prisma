@@ -138,16 +138,27 @@ model Table {
 }
 
 model MenuCategory {
-  id                String     @id @default(cuid())
+  id                String           @id @default(cuid())
   restaurantId      String
   name              String
-  sortOrder         Int        @default(0)
-  createdAt         DateTime   @default(now())
-  isDessertCategory Boolean    @default(false)
-  restaurant        Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  sortOrder         Int              @default(0)
+  createdAt         DateTime         @default(now())
+  isDessertCategory Boolean          @default(false)
+  kitchenKind       MenuCategoryKind @default(FOOD)
+  restaurant        Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   items             MenuItem[]
 
   @@index([restaurantId])
+}
+
+// What kind of thing this category holds, from the kitchen's point of
+// view. DRINKS need no preparation, so kitchen can send a drinks-only
+// order straight to the waiter instead of walking it through
+// Accept -> Preparing -> Ready.
+enum MenuCategoryKind {
+  FOOD
+  DRINKS
+  DESSERT
 }
 
 model MenuItem {

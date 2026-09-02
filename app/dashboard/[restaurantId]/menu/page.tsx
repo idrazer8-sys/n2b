@@ -17,6 +17,7 @@ type Category = {
   id: string;
   name: string;
   items: Item[];
+  kitchenKind: 'FOOD' | 'DRINKS' | 'DESSERT';
 };
 
 type Restaurant = {
@@ -126,6 +127,39 @@ export default function MenuManagementPage({
           ? err.message
           : t('menuTables.editor.couldNotCreateCategory')
       );
+    }
+  }
+
+  async function updateCategoryKind(
+    category: Category,
+    kitchenKind: Category['kitchenKind']
+  ) {
+    setCategories(
+      (prev) =>
+        prev?.map((c) =>
+          c.id === category.id ? { ...c, kitchenKind } : c
+        ) ?? prev
+    );
+
+    try {
+      const res = await fetch(
+        `/api/restaurants/${restaurantId}/menu/categories/${category.id}`,
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kitchenKind }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error();
+      }
+    } catch {
+      setError(
+        t('menuTables.editor.couldNotUpdateCategoryKind')
+      );
+      await load();
     }
   }
 
@@ -264,22 +298,54 @@ export default function MenuManagementPage({
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  setAddingItemTo(
-                    addingItemTo === category.id
-                      ? null
-                      : category.id
-                  )
-                }
-                className="text-sm text-accent underline underline-offset-2"
-              >
-                {addingItemTo === category.id
-                  ? t('common.cancel')
-                  : `+ ${t('menuTables.editor.addItem')}`}
-              </button>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-1.5 text-xs text-ink/50">
+                  {t('menuTables.editor.categoryKindLabel')}
+                  <select
+                    value={category.kitchenKind}
+                    onChange={(e) =>
+                      void updateCategoryKind(
+                        category,
+                        e.target.value as Category['kitchenKind']
+                      )
+                    }
+                    className="border border-line rounded-md px-1.5 py-1 text-xs bg-paper"
+                  >
+                    <option value="FOOD">
+                      {t('menuTables.editor.categoryKindFood')}
+                    </option>
+                    <option value="DRINKS">
+                      {t('menuTables.editor.categoryKindDrinks')}
+                    </option>
+                    <option value="DESSERT">
+                      {t('menuTables.editor.categoryKindDessert')}
+                    </option>
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAddingItemTo(
+                      addingItemTo === category.id
+                        ? null
+                        : category.id
+                    )
+                  }
+                  className="text-sm text-accent underline underline-offset-2"
+                >
+                  {addingItemTo === category.id
+                    ? t('common.cancel')
+                    : `+ ${t('menuTables.editor.addItem')}`}
+                </button>
+              </div>
             </div>
+
+            {category.kitchenKind === 'DRINKS' && (
+              <p className="text-xs text-ink/40 -mt-2 mb-3">
+                {t('menuTables.editor.categoryKindDrinksHint')}
+              </p>
+            )}
 
             {addingItemTo === category.id && (
               <NewItemForm

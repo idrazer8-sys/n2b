@@ -46,6 +46,13 @@ export async function GET(
       items: {
         include: {
           modifiers: true,
+          menuItem: {
+            select: {
+              category: {
+                select: { kitchenKind: true },
+              },
+            },
+          },
         },
       },
     },
@@ -54,5 +61,21 @@ export async function GET(
     },
   });
 
-  return NextResponse.json(orders);
+  // Flatten each item's category-level kitchen kind onto the item itself
+  // (and drop the nested menuItem we only fetched for that), so the
+  // kitchen/waiter UI can decide per order whether it's eligible for the
+  // "straight to the waiter" shortcut (drinks need no preparation)
+  // without a deep lookup.
+  const withKitchenKind = orders.map((order) => ({
+    ...order,
+    items: order.items.map((item) => {
+      const { menuItem, ...rest } = item;
+      return {
+        ...rest,
+        kitchenKind: menuItem?.category?.kitchenKind ?? 'FOOD',
+      };
+    }),
+  }));
+
+  return NextResponse.json(withKitchenKind);
 }

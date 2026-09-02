@@ -6,7 +6,9 @@ import { publishOrderEvent } from '@/src/lib/order-events';
 import { errorResponse } from '@/src/lib/api-response';
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-  NEW: ['ACCEPTED', 'REJECTED'],
+  // NEW -> READY directly is the "straight to the waiter" shortcut for
+  // drinks-only orders, which need no kitchen preparation.
+  NEW: ['ACCEPTED', 'REJECTED', 'READY'],
   ACCEPTED: ['PREPARING', 'CANCELLED'],
   PREPARING: ['READY', 'CANCELLED'],
   READY: ['COMPLETED'],

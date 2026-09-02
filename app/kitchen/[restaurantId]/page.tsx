@@ -34,8 +34,16 @@ type Order = {
     quantity: number;
     notes: string | null;
     status: 'PENDING' | 'SERVED' | 'UNAVAILABLE';
+    kitchenKind: 'FOOD' | 'DRINKS' | 'DESSERT';
   }[];
 };
+
+// Drinks-only orders need no preparation, so kitchen can send them
+// straight to the waiter instead of walking them through Accept ->
+// Preparing -> Ready.
+function isDrinksOnly(order: Order) {
+  return order.items.every((item) => item.kitchenKind === 'DRINKS');
+}
 
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat('es-ES', {
@@ -68,6 +76,8 @@ function KitchenOrderCard({
   onAction,
   markingItemId,
   onMarkItemUnavailable,
+  secondaryActionLabel,
+  onSecondaryAction,
 }: {
   order: Order;
   currency: string;
@@ -76,6 +86,8 @@ function KitchenOrderCard({
   onAction: () => void;
   markingItemId: string | null;
   onMarkItemUnavailable: (itemId: string, note: string) => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
 }) {
   const { t } = useI18n();
   const [notePromptItemId, setNotePromptItemId] = useState<string | null>(null);
@@ -188,14 +200,27 @@ function KitchenOrderCard({
           )}
         </span>
 
-        <button
-          type="button"
-          disabled={updating}
-          onClick={onAction}
-          className="bg-n2bOffwhite px-5 py-3 text-sm font-medium text-n2bNavy disabled:opacity-50"
-        >
-          {updating ? t('staffMisc.kitchen.updating') : actionLabel}
-        </button>
+        <div className="flex items-center gap-2">
+          {secondaryActionLabel && onSecondaryAction && (
+            <button
+              type="button"
+              disabled={updating}
+              onClick={onSecondaryAction}
+              className="border border-n2bOffwhite/40 px-4 py-3 text-sm font-medium text-n2bOffwhite disabled:opacity-50"
+            >
+              {secondaryActionLabel}
+            </button>
+          )}
+
+          <button
+            type="button"
+            disabled={updating}
+            onClick={onAction}
+            className="bg-n2bOffwhite px-5 py-3 text-sm font-medium text-n2bNavy disabled:opacity-50"
+          >
+            {updating ? t('staffMisc.kitchen.updating') : actionLabel}
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -583,6 +608,16 @@ export default function KitchenPage() {
                     markingItemId={markingItemId}
                     onMarkItemUnavailable={(itemId, note) =>
                       void markItemUnavailable(order.id, itemId, note)
+                    }
+                    secondaryActionLabel={
+                      isDrinksOnly(order)
+                        ? t('staffMisc.kitchen.sendDirectToWaiter')
+                        : undefined
+                    }
+                    onSecondaryAction={
+                      isDrinksOnly(order)
+                        ? () => updateOrder(order.id, 'READY')
+                        : undefined
                     }
                   />
                 ))
