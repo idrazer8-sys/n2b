@@ -1,22 +1,61 @@
-// Minimal in-memory sliding-window rate limiter for the MVP. Good enough for
-// a single-instance deploy; swap for a Redis/Upstash-backed limiter before
-// running on multiple serverless instances (in-memory state won't be shared).
-const buckets = new Map<string, { count: number; resetAt: number }>();
+import { db } from './db';
 
-export function rateLimit(key: string, limit: number, windowMs: number) {
-  const now = Date.now();
-  const bucket = buckets.get(key);
+// Sliding-window-ish rate limiter backed by RateLimitBucket, so the count
+// is real shared state across every serverless instance — a plain
+// in-memory Map (the original implementation) resets per cold start and
+// can land a brute-force login or order-spam run on a fresh, empty bucket
+// on nearly every request on Vercel, making it decorative in production.
+//
+// The INSERT ... ON CONFLICT below is one atomic statement: concurrent
+// requests for the same key can't both read count=N and both write N+1
+// (the classic lost-update race), because Postgres serializes the
+// conflicting writes at the row level, same as the nextOrderNumber counter
+// in app/api/public/orders/route.ts.
+export async function rateLimit(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<{ ok: boolean; remaining: number; retryAfterMs?: number }> {
+  const now = new Date();
+  const resetAt = new Date(now.getTime() + windowMs);
 
-  if (!bucket || bucket.resetAt < now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { ok: true, remaining: limit - 1 };
+  const rows = await db.$queryRaw<
+    { count: number; resetAt: Date }[]
+  >`
+    INSERT INTO "RateLimitBucket" ("key", "count", "resetAt")
+    VALUES (${key}, 1, ${resetAt})
+    ON CONFLICT ("key") DO UPDATE SET
+      "count" = CASE
+        WHEN "RateLimitBucket"."resetAt" < ${now} THEN 1
+        ELSE "RateLimitBucket"."count" + 1
+      END,
+      "resetAt" = CASE
+        WHEN "RateLimitBucket"."resetAt" < ${now} THEN ${resetAt}
+        ELSE "RateLimitBucket"."resetAt"
+      END
+    RETURNING "count", "resetAt"
+  `;
+
+  const bucket = rows[0];
+
+  // Opportunistic cleanup so the table doesn't grow forever — cheap,
+  // no cron needed, and harmless if it occasionally overlaps another
+  // request's cleanup sweep.
+  if (Math.random() < 0.01) {
+    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    void db.rateLimitBucket
+      .deleteMany({ where: { resetAt: { lt: cutoff } } })
+      .catch(() => {});
   }
 
-  if (bucket.count >= limit) {
-    return { ok: false, remaining: 0, retryAfterMs: bucket.resetAt - now };
+  if (bucket.count > limit) {
+    return {
+      ok: false,
+      remaining: 0,
+      retryAfterMs: Math.max(0, bucket.resetAt.getTime() - now.getTime()),
+    };
   }
 
-  bucket.count += 1;
   return { ok: true, remaining: limit - bucket.count };
 }
 

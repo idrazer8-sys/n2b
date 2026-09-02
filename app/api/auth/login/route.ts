@@ -55,7 +55,7 @@ export async function POST(
       clientIp(req.headers);
 
     const ipLimit =
-      rateLimit(
+      await rateLimit(
         `login-ip:${ip}`,
         20,
         15 * 60 * 1000
@@ -84,7 +84,7 @@ export async function POST(
         .toLowerCase();
 
     const emailLimit =
-      rateLimit(
+      await rateLimit(
         `login-email:${email}`,
         8,
         15 * 60 * 1000

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   try {
     const ip = clientIp(req.headers);
 
-    const limited = rateLimit(
+    const limited = await rateLimit(
       `create-order:${ip}`,
       30,
       10 * 60 * 1000

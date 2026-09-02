@@ -43,6 +43,20 @@ model RestaurantStaff {
   @@index([restaurantId, isActive])
 }
 
+// Backs src/lib/rate-limit.ts. A plain in-memory Map can't rate-limit
+// anything meaningfully on Vercel — each request may land on a different,
+// cold serverless instance with its own empty Map, so a brute-force login
+// or order-spam attempt effectively never accumulates a shared count. This
+// table gives the limiter real cross-instance shared state via a single
+// atomic INSERT ... ON CONFLICT per check (see rateLimit()).
+model RateLimitBucket {
+  key     String   @id
+  count   Int      @default(1)
+  resetAt DateTime
+
+  @@index([resetAt])
+}
+
 model Restaurant {
   id                     String            @id @default(cuid())
   slug                   String            @unique
