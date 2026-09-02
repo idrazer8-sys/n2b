@@ -158,20 +158,21 @@ export default function KitchenPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [restaurantsRes, ordersRes] = await Promise.all([
-      fetch('/api/restaurants', {
-        credentials: 'include',
-        cache: 'no-store',
-      }),
-      fetch(`/api/restaurants/${restaurantId}/orders`, {
-        credentials: 'include',
-        cache: 'no-store',
-      }),
-    ]);
+    // Sequential rather than concurrent — firing both at once was
+    // occasionally enough load to randomly exhaust the DB pooler's
+    // connection limit and fail one of them.
+    const fetchOpts = {
+      credentials: 'include' as const,
+      cache: 'no-store' as const,
+    };
+    const restaurantsRes = await fetch('/api/restaurants', fetchOpts);
+    const ordersRes = await fetch(
+      `/api/restaurants/${restaurantId}/orders`,
+      fetchOpts
+    );
 
     if (restaurantsRes.status === 401) {
-      router.push('/login');
-      return;
+      throw new Error('__UNAUTHORIZED__');
     }
 
     if (!restaurantsRes.ok) {
@@ -224,10 +225,27 @@ export default function KitchenPage() {
         setError(null);
         await load();
       } catch (err) {
-        if (mounted) {
+        // A transient auth/connection hiccup right after a fresh
+        // session can fail once and succeed immediately after — one
+        // quick retry avoids bouncing the cook to the login page for
+        // something that fixes itself right away.
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          await load();
+        } catch (retryErr) {
+          if (!mounted) return;
+
+          if (
+            retryErr instanceof Error &&
+            retryErr.message === '__UNAUTHORIZED__'
+          ) {
+            router.push('/login');
+            return;
+          }
+
           setError(
-            err instanceof Error
-              ? err.message
+            retryErr instanceof Error
+              ? retryErr.message
               : t('staffMisc.kitchen.couldNotLoadKitchen')
           );
         }

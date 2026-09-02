@@ -763,86 +763,43 @@ export default function StaffOrdersPage() {
         }
 
         const attempt = async () => {
-          const [
-            restaurantsRes,
-            meRes,
-            ordersRes,
-            assignmentsRes,
-            paymentRequestsRes,
-            tablesRes,
-            tableStatusRes,
-          ] =
-            await Promise.all([
-              fetch(
-                '/api/restaurants',
-                {
-                  credentials:
-                    'include',
-                  cache:
-                    'no-store',
-                }
-              ),
+          // Fetched sequentially rather than via Promise.all — firing
+          // all 7 of these at once was enough concurrent load to
+          // randomly exhaust the DB pooler's connection limit and fail
+          // one or two of them on every other load.
+          const fetchOpts = {
+            credentials: 'include' as const,
+            cache: 'no-store' as const,
+          };
 
-              fetch(
-                `/api/restaurants/${restaurantId}/me`,
-                {
-                  credentials:
-                    'include',
-                  cache:
-                    'no-store',
-                }
-              ),
-
-              fetch(
-                `/api/restaurants/${restaurantId}/orders`,
-                {
-                  credentials:
-                    'include',
-                  cache:
-                    'no-store',
-                }
-              ),
-
-              fetch(
-                `/api/restaurants/${restaurantId}/table-assignments`,
-                {
-                  credentials:
-                    'include',
-                  cache:
-                    'no-store',
-                }
-              ),
-
-              fetch(
-                `/api/restaurants/${restaurantId}/payment-requests`,
-                {
-                  credentials:
-                    'include',
-                  cache:
-                    'no-store',
-                }
-              ),
-
-              fetch(
-                `/api/restaurants/${restaurantId}/tables`,
-                {
-                  credentials:
-                    'include',
-                  cache:
-                    'no-store',
-                }
-              ),
-
-              fetch(
-                `/api/restaurants/${restaurantId}/table-status?mine=1`,
-                {
-                  credentials:
-                    'include',
-                  cache:
-                    'no-store',
-                }
-              ),
-            ]);
+          const restaurantsRes = await fetch(
+            '/api/restaurants',
+            fetchOpts
+          );
+          const meRes = await fetch(
+            `/api/restaurants/${restaurantId}/me`,
+            fetchOpts
+          );
+          const ordersRes = await fetch(
+            `/api/restaurants/${restaurantId}/orders`,
+            fetchOpts
+          );
+          const assignmentsRes = await fetch(
+            `/api/restaurants/${restaurantId}/table-assignments`,
+            fetchOpts
+          );
+          const paymentRequestsRes = await fetch(
+            `/api/restaurants/${restaurantId}/payment-requests`,
+            fetchOpts
+          );
+          const tablesRes = await fetch(
+            `/api/restaurants/${restaurantId}/tables`,
+            fetchOpts
+          );
+          const tableStatusRes = await fetch(
+            `/api/restaurants/${restaurantId}/table-status?mine=1`,
+            fetchOpts
+          );
 
           if (
             restaurantsRes.status ===
