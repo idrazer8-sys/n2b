@@ -96,6 +96,8 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.restaurantStatusLabel': 'Restaurante',
     'dashboardCore.settings.open': 'Abierto',
     'dashboardCore.settings.closed': 'Cerrado',
+    'dashboardCore.settings.restaurantStatusDescription':
+      'Mientras esté cerrado, los clientes no podrán enviar pedidos nuevos.',
     'dashboardCore.settings.accountLabel': 'Cuenta',
     'dashboardCore.settings.saveSettings': 'Guardar configuración',
 
@@ -257,6 +259,8 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.restaurantStatusLabel': 'Restaurant',
     'dashboardCore.settings.open': 'Open',
     'dashboardCore.settings.closed': 'Closed',
+    'dashboardCore.settings.restaurantStatusDescription':
+      'While closed, customers won’t be able to place new orders.',
     'dashboardCore.settings.accountLabel': 'Account',
     'dashboardCore.settings.saveSettings': 'Save settings',
 
@@ -425,6 +429,8 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.restaurantStatusLabel': 'Restaurante',
     'dashboardCore.settings.open': 'Aberto',
     'dashboardCore.settings.closed': 'Fechado',
+    'dashboardCore.settings.restaurantStatusDescription':
+      'Enquanto estiver fechado, os clientes não poderão enviar novos pedidos.',
     'dashboardCore.settings.accountLabel': 'Conta',
     'dashboardCore.settings.saveSettings': 'Guardar configurações',
 
@@ -599,6 +605,8 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.restaurantStatusLabel': 'Restaurant',
     'dashboardCore.settings.open': 'Geöffnet',
     'dashboardCore.settings.closed': 'Geschlossen',
+    'dashboardCore.settings.restaurantStatusDescription':
+      'Solange geschlossen ist, können Kunden keine neuen Bestellungen aufgeben.',
     'dashboardCore.settings.accountLabel': 'Konto',
     'dashboardCore.settings.saveSettings': 'Einstellungen speichern',
 
@@ -769,6 +777,8 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.restaurantStatusLabel': 'Restaurant',
     'dashboardCore.settings.open': 'Ouvert',
     'dashboardCore.settings.closed': 'Fermé',
+    'dashboardCore.settings.restaurantStatusDescription':
+      'Tant que le restaurant est fermé, les clients ne pourront pas passer de nouvelles commandes.',
     'dashboardCore.settings.accountLabel': 'Compte',
     'dashboardCore.settings.saveSettings': 'Enregistrer les paramètres',
 

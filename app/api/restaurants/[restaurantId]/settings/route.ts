@@ -10,6 +10,7 @@ const schema = z.object({
   waiterSlaSeconds: z.number().int().min(30).max(1800).nullable().optional(),
   allowPayAtRestaurant: z.boolean().optional(),
   reservationBufferMinutes: z.number().int().min(0).max(240).optional(),
+  isOpen: z.boolean().optional(),
 });
 
 type RouteContext = {
@@ -168,6 +169,7 @@ export async function PATCH(
         ...(body.reservationBufferMinutes !== undefined
           ? { reservationBufferMinutes: body.reservationBufferMinutes }
           : {}),
+        ...(body.isOpen !== undefined ? { isOpen: body.isOpen } : {}),
         totalServiceSlaSeconds: total,
       },
       select: {

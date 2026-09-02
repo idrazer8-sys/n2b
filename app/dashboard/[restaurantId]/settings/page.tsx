@@ -77,6 +77,9 @@ export default function SettingsPage() {
   const [error, setError] =
     useState('');
 
+  const [togglingOpen, setTogglingOpen] =
+    useState(false);
+
   useEffect(() => {
     async function loadSettings() {
       try {
@@ -218,6 +221,53 @@ export default function SettingsPage() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleOpen(next: boolean) {
+    if (!settings) return;
+
+    const previous = settings.isOpen;
+
+    setSettings((current) =>
+      current ? { ...current, isOpen: next } : current
+    );
+
+    setTogglingOpen(true);
+    setError('');
+
+    try {
+      const response = await fetch(
+        `/api/restaurants/${restaurantId}/settings`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ isOpen: next }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+            t('dashboardCore.settings.unableToSave')
+        );
+      }
+    } catch (err) {
+      setSettings((current) =>
+        current ? { ...current, isOpen: previous } : current
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('dashboardCore.settings.unableToSave')
+      );
+    } finally {
+      setTogglingOpen(false);
     }
   }
 
@@ -479,15 +529,46 @@ export default function SettingsPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-lg border p-4">
-              <div className="text-sm text-gray-500">
-                {t('dashboardCore.settings.restaurantStatusLabel')}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-sm text-gray-500">
+                    {t('dashboardCore.settings.restaurantStatusLabel')}
+                  </div>
+
+                  <div className="mt-1 font-semibold text-gray-900">
+                    {settings?.isOpen
+                      ? t('dashboardCore.settings.open')
+                      : t('dashboardCore.settings.closed')}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings?.isOpen ?? false}
+                  disabled={!settings || togglingOpen}
+                  onClick={() =>
+                    void toggleOpen(!settings?.isOpen)
+                  }
+                  className={`relative shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-50 ${
+                    settings?.isOpen
+                      ? 'bg-black'
+                      : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                      settings?.isOpen
+                        ? 'translate-x-5'
+                        : ''
+                    }`}
+                  />
+                </button>
               </div>
 
-              <div className="mt-1 font-semibold text-gray-900">
-                {settings?.isOpen
-                  ? t('dashboardCore.settings.open')
-                  : t('dashboardCore.settings.closed')}
-              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                {t('dashboardCore.settings.restaurantStatusDescription')}
+              </p>
             </div>
 
             <div className="rounded-lg border p-4">
