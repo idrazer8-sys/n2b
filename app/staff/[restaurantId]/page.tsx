@@ -1211,7 +1211,8 @@ export default function StaffOrdersPage() {
   ) {
     if (
       order.staffId !==
-      me?.staffId
+        me?.staffId &&
+      !canActOnAnyReadyOrder
     ) {
       setError(
         t('staffPortal.errors.orderNotAssigned')
@@ -1284,7 +1285,8 @@ export default function StaffOrdersPage() {
   ) {
     if (
       order.staffId !==
-      me?.staffId
+        me?.staffId &&
+      !canActOnAnyReadyOrder
     ) {
       setError(
         t('staffPortal.errors.orderNotAssigned')
@@ -2265,26 +2267,28 @@ export default function StaffOrdersPage() {
                           </button>
                         )}
 
-                        {mine && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void markServed(
-                                order
-                              )
-                            }
-                            disabled={
-                              updatingOrderId ===
+                        {mine &&
+                          order.status ===
+                            'READY' && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void markServed(
+                                  order
+                                )
+                              }
+                              disabled={
+                                updatingOrderId ===
+                                order.id
+                              }
+                              className="flex-1 bg-[#1A134D] text-[#F5F6FA] rounded-lg px-4 py-3 text-xs uppercase tracking-[0.08em] disabled:opacity-40"
+                            >
+                              {updatingOrderId ===
                               order.id
-                            }
-                            className="flex-1 bg-[#1A134D] text-[#F5F6FA] rounded-lg px-4 py-3 text-xs uppercase tracking-[0.08em] disabled:opacity-40"
-                          >
-                            {updatingOrderId ===
-                            order.id
-                              ? t('staffPortal.actions.updating')
-                              : t('staffPortal.actions.markServed')}
-                          </button>
-                        )}
+                                ? t('staffPortal.actions.updating')
+                                : t('staffPortal.actions.markServed')}
+                            </button>
+                          )}
                       </div>
                     </article>
                   );
