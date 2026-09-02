@@ -25,6 +25,7 @@ type ZoneRow = {
 type TableRow = {
   id: string;
   label: string;
+  token: string;
   isActive: boolean;
   zoneId: string | null;
   x: number | null;
@@ -260,6 +261,7 @@ export default function PisoBoard({
   const [tables, setTables] = useState<TableRow[]>([]);
   const [statuses, setStatuses] = useState<StatusRow[]>([]);
   const [reservations, setReservations] = useState<ReservationRow[]>([]);
+  const [slug, setSlug] = useState('');
   const [selected, setSelected] = useState<
     { kind: 'table' | 'zone'; id: string } | null
   >(null);
@@ -394,6 +396,28 @@ export default function PisoBoard({
     }, 4000);
     return () => window.clearInterval(interval);
   }, [loadLayout, loadStatuses, loadReservations]);
+
+  // Needed to build each table's public order-page URL (QR/"open menu"/
+  // "copy link") right here on the board — the slug isn't part of the
+  // table or zone payloads. Only the editable (manager/owner) board shows
+  // that panel, and /settings requires MANAGER rank, so skip this for the
+  // read-only staff board.
+  useEffect(() => {
+    if (!editable) return;
+    let cancelled = false;
+    fetch(`/api/restaurants/${restaurantId}/settings`, {
+      credentials: 'include',
+      cache: 'no-store',
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.slug) setSlug(data.slug);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantId, editable]);
 
   const nextReservationByTableId = useMemo(() => {
     const map = new Map<string, ReservationRow>();
@@ -902,6 +926,8 @@ export default function PisoBoard({
           {editable && selected ? (
             <EditPanel
               t={t}
+              restaurantId={restaurantId}
+              slug={slug}
               table={selectedTable}
               zone={selectedZone}
               zones={zones}
@@ -1036,6 +1062,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function EditPanel({
   t,
+  restaurantId,
+  slug,
   table,
   zone,
   zones,
@@ -1045,6 +1073,8 @@ function EditPanel({
   onDelete,
 }: {
   t: Translate;
+  restaurantId: string;
+  slug: string;
   table: TableRow | null;
   zone: ZoneRow | null;
   zones: ZoneRow[];
@@ -1105,6 +1135,8 @@ function EditPanel({
               ))}
             </select>
           </Field>
+
+          <TableQrSection t={t} restaurantId={restaurantId} slug={slug} table={table} />
         </>
       )}
 
@@ -1131,6 +1163,94 @@ function EditPanel({
           : t('floorPlan.editPanel.deleteZone')}
       </button>
     </div>
+  );
+}
+
+// The QR code is not a separate thing to manage — it's just this table's
+// own token rendered as an image, so it's automatically in sync with the
+// table it belongs to: a brand-new table already has a working QR (its
+// token is generated the moment the row is created), and deleting or
+// deactivating the table immediately invalidates that same QR (the public
+// menu route rejects an inactive/missing table), with nothing extra to
+// wire up on either side.
+function TableQrSection({
+  t,
+  restaurantId,
+  slug,
+  table,
+}: {
+  t: Translate;
+  restaurantId: string;
+  slug: string;
+  table: TableRow;
+}) {
+  const [copied, setCopied] = useState(false);
+  const qrSrc = `/api/restaurants/${restaurantId}/tables/${table.id}/qr`;
+  const publicUrl =
+    slug && typeof window !== 'undefined'
+      ? `${window.location.origin}/r/${slug}?t=${table.token}`
+      : '';
+
+  async function copyUrl() {
+    if (!publicUrl) return;
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard access can be denied by the browser — the link is still
+      // right there for the manager to select and copy manually.
+    }
+  }
+
+  return (
+    <Field label={t('floorPlan.editPanel.qrHeading')}>
+      <div className="rounded-lg border border-[#2a2f38] bg-[#12141a] p-3 flex flex-col items-center">
+        <img
+          src={qrSrc}
+          alt={t('floorPlan.editPanel.qrHeading')}
+          className="w-28 h-28 bg-white rounded"
+        />
+
+        <div className="mt-3 grid grid-cols-2 gap-2 w-full">
+          <button
+            type="button"
+            onClick={() => void copyUrl()}
+            disabled={!publicUrl}
+            className="text-[11.5px] text-center border rounded-lg px-2 py-1.5 disabled:opacity-40"
+            style={{ borderColor: '#2a2f38', color: '#eef1f5' }}
+          >
+            {copied
+              ? t('floorPlan.editPanel.copied')
+              : t('floorPlan.editPanel.copyUrl')}
+          </button>
+
+          <a
+            href={publicUrl || undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-disabled={!publicUrl}
+            className="text-[11.5px] text-center border rounded-lg px-2 py-1.5"
+            style={{
+              borderColor: '#2a2f38',
+              color: publicUrl ? '#eef1f5' : '#4b515c',
+              pointerEvents: publicUrl ? 'auto' : 'none',
+            }}
+          >
+            {t('floorPlan.editPanel.openMenu')}
+          </a>
+
+          <a
+            href={qrSrc}
+            download={`mesa-${table.label}-qr.png`}
+            className="col-span-2 text-[11.5px] text-center border rounded-lg px-2 py-1.5"
+            style={{ borderColor: '#2a2f38', color: '#eef1f5' }}
+          >
+            {t('floorPlan.editPanel.downloadQr')}
+          </a>
+        </div>
+      </div>
+    </Field>
   );
 }
 
