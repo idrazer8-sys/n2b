@@ -819,7 +819,7 @@ export default function StaffOrdersPage() {
             fetchOpts
           );
           const assignmentsRes = await fetch(
-            `/api/restaurants/${restaurantId}/table-assignments`,
+            `/api/restaurants/${restaurantId}/table-assignments?mine=1`,
             fetchOpts
           );
           const paymentRequestsRes = await fetch(
