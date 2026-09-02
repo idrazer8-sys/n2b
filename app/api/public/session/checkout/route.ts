@@ -74,10 +74,29 @@ export async function POST(req: NextRequest) {
         ? Math.round(body.cashTenderedCents)
         : null;
 
-    const restaurants = await db.restaurant.findMany({
-      where: { isActive: true },
-      select: { id: true },
-    });
+    // The client always knows which restaurant it's paying for — resolve
+    // the session against that one restaurant only. Guessing by scanning
+    // every active restaurant's cookie (as this used to do) could match a
+    // stale or unrelated session from a different restaurant the same
+    // browser had visited, silently blocking checkout on the wrong table's
+    // orders.
+    const restaurantSlug =
+      typeof body.restaurantSlug === 'string'
+        ? body.restaurantSlug.trim()
+        : '';
+
+    if (!restaurantSlug) {
+      return NextResponse.json(
+        { error: 'Missing restaurant' },
+        { status: 400 }
+      );
+    }
+
+    const restaurantForSession =
+      await db.restaurant.findUnique({
+        where: { slug: restaurantSlug },
+        select: { id: true, isActive: true },
+      });
 
     let resolvedSession:
       | {
@@ -87,23 +106,26 @@ export async function POST(req: NextRequest) {
         }
       | null = null;
 
-    for (const restaurant of restaurants) {
+    if (
+      restaurantForSession &&
+      restaurantForSession.isActive
+    ) {
       const token = readSessionTokenFromCookies(
-        restaurant.id
+        restaurantForSession.id
       );
 
       const verified = await verifyCustomerSession(
-        restaurant.id,
+        restaurantForSession.id,
         token
       );
 
       if (verified) {
         resolvedSession = {
           id: verified.id,
-          restaurantId: restaurant.id,
+          restaurantId:
+            restaurantForSession.id,
           tableId: verified.tableId,
         };
-        break;
       }
     }
 

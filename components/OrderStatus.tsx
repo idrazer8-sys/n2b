@@ -348,6 +348,8 @@ export default function OrderStatus({
   }
 
   async function finishMeal() {
+    if (!order) return;
+
     if (
       paymentChoice ===
         'PAY_AT_RESTAURANT' &&
@@ -430,6 +432,9 @@ export default function OrderStatus({
               'no-cache',
           },
           body: JSON.stringify({
+            restaurantSlug:
+              order.restaurant.slug,
+
             paymentMethod:
               paymentChoice,
 
