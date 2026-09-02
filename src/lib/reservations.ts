@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { db } from '@/src/lib/db';
 
 /**
@@ -31,6 +32,25 @@ export async function findConflictingReservation(
     },
     select: { id: true, startsAt: true },
   });
+}
+
+/**
+ * Whether `err` is Postgres rejecting a write for violating the
+ * reservation_no_overlapping_bookings EXCLUDE constraint (the DB-level
+ * backstop behind findConflictingReservation's application-level check).
+ * Prisma has no dedicated error code for EXCLUDE constraints — verified
+ * live that this surfaces as a PrismaClientUnknownRequestError wrapping the
+ * raw Postgres error (code 23P01), not a PrismaClientKnownRequestError with
+ * a P2xxx code, so matching on the constraint name in the message is the
+ * reliable way to identify it (a lone "23P01" would also match, since it's
+ * the only exclusion constraint in this schema, but the name is unambiguous
+ * even if that ever changes).
+ */
+export function isReservationExclusionViolation(err: unknown): boolean {
+  return (
+    err instanceof Prisma.PrismaClientUnknownRequestError &&
+    err.message.includes('reservation_no_overlapping_bookings')
+  );
 }
 
 /**

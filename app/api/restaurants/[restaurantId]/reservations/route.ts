@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/src/lib/db';
 import { requireRestaurantAccess } from '@/src/lib/auth';
-import { findConflictingReservation } from '@/src/lib/reservations';
+import { findConflictingReservation, isReservationExclusionViolation } from '@/src/lib/reservations';
 
 const createSchema = z.object({
   tableId: z.string().min(1),
@@ -89,11 +89,13 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       select: { reservationBufferMinutes: true },
     });
 
+    const bufferMinutes = restaurant?.reservationBufferMinutes ?? 15;
+
     const conflict = await findConflictingReservation(
       params.restaurantId,
       body.tableId,
       startsAt,
-      restaurant?.reservationBufferMinutes ?? 15
+      bufferMinutes
     );
 
     if (conflict) {
@@ -106,21 +108,39 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       );
     }
 
-    const reservation = await db.reservation.create({
-      data: {
-        restaurantId: params.restaurantId,
-        tableId: body.tableId,
-        startsAt,
-        partySize: body.partySize,
-        customerName: body.customerName ?? null,
-        customerPhone: body.customerPhone ?? null,
-        notes: body.notes ?? null,
-        createdByUserId: access.user.id,
-      },
-      include: {
-        table: { select: { id: true, label: true } },
-      },
-    });
+    // The check above is a friendly fast-path — the real guarantee against
+    // a race between two near-simultaneous bookings is the DB-level
+    // EXCLUDE constraint, which this insert can still violate even though
+    // the check just passed.
+    let reservation;
+
+    try {
+      reservation = await db.reservation.create({
+        data: {
+          restaurantId: params.restaurantId,
+          tableId: body.tableId,
+          startsAt,
+          bufferMinutesSnapshot: bufferMinutes,
+          partySize: body.partySize,
+          customerName: body.customerName ?? null,
+          customerPhone: body.customerPhone ?? null,
+          notes: body.notes ?? null,
+          createdByUserId: access.user.id,
+        },
+        include: {
+          table: { select: { id: true, label: true } },
+        },
+      });
+    } catch (err) {
+      if (isReservationExclusionViolation(err)) {
+        return NextResponse.json(
+          { error: 'This table already has a reservation too close to that time' },
+          { status: 409 }
+        );
+      }
+
+      throw err;
+    }
 
     return NextResponse.json({ reservation }, { status: 201 });
   } catch (err) {

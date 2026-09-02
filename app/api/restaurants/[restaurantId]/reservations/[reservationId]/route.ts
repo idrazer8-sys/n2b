@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/src/lib/db';
 import { requireRestaurantAccess } from '@/src/lib/auth';
-import { findConflictingReservation } from '@/src/lib/reservations';
+import { findConflictingReservation, isReservationExclusionViolation } from '@/src/lib/reservations';
 
 const patchSchema = z.object({
   tableId: z.string().min(1).optional(),
@@ -60,17 +60,21 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     // Only re-check for a conflict when the table or time is actually
     // moving — editing just the party size or notes shouldn't re-validate
     // against itself.
+    let bufferMinutes: number | undefined;
+
     if (body.tableId !== undefined || startsAt !== undefined) {
       const restaurant = await db.restaurant.findUnique({
         where: { id: params.restaurantId },
         select: { reservationBufferMinutes: true },
       });
 
+      bufferMinutes = restaurant?.reservationBufferMinutes ?? 15;
+
       const conflict = await findConflictingReservation(
         params.restaurantId,
         body.tableId ?? existing.tableId,
         startsAt ?? existing.startsAt,
-        restaurant?.reservationBufferMinutes ?? 15,
+        bufferMinutes,
         params.reservationId
       );
 
@@ -85,21 +89,38 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
     }
 
-    const reservation = await db.reservation.update({
-      where: { id: params.reservationId },
-      data: {
-        ...(body.tableId !== undefined ? { tableId: body.tableId } : {}),
-        ...(startsAt !== undefined ? { startsAt } : {}),
-        ...(body.partySize !== undefined ? { partySize: body.partySize } : {}),
-        ...(body.customerName !== undefined ? { customerName: body.customerName } : {}),
-        ...(body.customerPhone !== undefined ? { customerPhone: body.customerPhone } : {}),
-        ...(body.notes !== undefined ? { notes: body.notes } : {}),
-        ...(body.status !== undefined ? { status: body.status } : {}),
-      },
-      include: {
-        table: { select: { id: true, label: true } },
-      },
-    });
+    // As in POST, the check above is a fast-path — the DB-level EXCLUDE
+    // constraint is what actually guarantees no overlap under concurrent
+    // edits, so this update can still be rejected even after a clean check.
+    let reservation;
+
+    try {
+      reservation = await db.reservation.update({
+        where: { id: params.reservationId },
+        data: {
+          ...(body.tableId !== undefined ? { tableId: body.tableId } : {}),
+          ...(startsAt !== undefined ? { startsAt } : {}),
+          ...(bufferMinutes !== undefined ? { bufferMinutesSnapshot: bufferMinutes } : {}),
+          ...(body.partySize !== undefined ? { partySize: body.partySize } : {}),
+          ...(body.customerName !== undefined ? { customerName: body.customerName } : {}),
+          ...(body.customerPhone !== undefined ? { customerPhone: body.customerPhone } : {}),
+          ...(body.notes !== undefined ? { notes: body.notes } : {}),
+          ...(body.status !== undefined ? { status: body.status } : {}),
+        },
+        include: {
+          table: { select: { id: true, label: true } },
+        },
+      });
+    } catch (err) {
+      if (isReservationExclusionViolation(err)) {
+        return NextResponse.json(
+          { error: 'This table already has a reservation too close to that time' },
+          { status: 409 }
+        );
+      }
+
+      throw err;
+    }
 
     return NextResponse.json({ reservation });
   } catch (err) {
