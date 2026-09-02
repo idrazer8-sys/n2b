@@ -71,37 +71,50 @@ export async function GET(
     });
 
     const now = new Date();
-    const rows = await Promise.all(
-      tables.map(async (table) => {
-        const session = await db.customerSession.findFirst({
-          where: {
-            restaurantId: params.restaurantId,
-            tableId: table.id,
-          },
-          orderBy: { createdAt: 'desc' },
-          include: {
-            sessionPayment: {
-              include: { splits: { orderBy: { personIndex: 'asc' } } },
+
+    // One batched query for the latest session per table, instead of firing
+    // a concurrent query per table — with enough tables open at once this
+    // was exhausting the Supabase pooler's connection limit.
+    const latestSessions =
+      tables.length === 0
+        ? []
+        : await db.customerSession.findMany({
+            where: {
+              restaurantId: params.restaurantId,
+              tableId: { in: tables.map((table) => table.id) },
             },
-            orders: {
-              where: {
-                status: {
-                  notIn: ['REJECTED', 'CANCELLED'],
+            orderBy: [{ tableId: 'asc' }, { createdAt: 'desc' }],
+            distinct: ['tableId'],
+            include: {
+              sessionPayment: {
+                include: { splits: { orderBy: { personIndex: 'asc' } } },
+              },
+              orders: {
+                where: {
+                  status: {
+                    notIn: ['REJECTED', 'CANCELLED'],
+                  },
+                },
+                orderBy: { createdAt: 'asc' },
+                select: {
+                  id: true,
+                  orderNumber: true,
+                  status: true,
+                  totalCents: true,
+                  paidAt: true,
                 },
               },
-              orderBy: { createdAt: 'asc' },
-              select: {
-                id: true,
-                orderNumber: true,
-                status: true,
-                totalCents: true,
-                paidAt: true,
-              },
             },
-          },
-        });
+          });
 
-        if (!session) {
+    const sessionByTableId = new Map(
+      latestSessions.map((session) => [session.tableId, session])
+    );
+
+    const rows = tables.map((table) => {
+      const session = sessionByTableId.get(table.id);
+
+      if (!session) {
           return {
             table,
             status: 'FREE' as const,
@@ -221,8 +234,7 @@ export async function GET(
           orders: [],
           updatedAt: session.createdAt.toISOString(),
         };
-      })
-    );
+    });
 
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
