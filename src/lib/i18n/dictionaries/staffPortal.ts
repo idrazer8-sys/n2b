@@ -59,6 +59,7 @@ export const staffPortal: Record<Locale, Record<string, string>> = {
     'staffPortal.actions.markItemServed': 'Servido',
     'staffPortal.actions.itemServedLabel': 'Servido',
     'staffPortal.actions.itemUnavailableLabel': 'No disponible',
+    'staffPortal.actions.itemStillInKitchen': 'En cocina',
     'staffPortal.actions.updating': 'Actualizando...',
 
     'staffPortal.header.waiterFallback': 'Camarero',
@@ -171,6 +172,7 @@ export const staffPortal: Record<Locale, Record<string, string>> = {
     'staffPortal.actions.markItemServed': 'Served',
     'staffPortal.actions.itemServedLabel': 'Served',
     'staffPortal.actions.itemUnavailableLabel': 'Unavailable',
+    'staffPortal.actions.itemStillInKitchen': 'In the kitchen',
     'staffPortal.actions.updating': 'Updating...',
 
     'staffPortal.header.waiterFallback': 'Waiter',
@@ -283,6 +285,7 @@ export const staffPortal: Record<Locale, Record<string, string>> = {
     'staffPortal.actions.markItemServed': 'Servido',
     'staffPortal.actions.itemServedLabel': 'Servido',
     'staffPortal.actions.itemUnavailableLabel': 'Indisponível',
+    'staffPortal.actions.itemStillInKitchen': 'Na cozinha',
     'staffPortal.actions.updating': 'A atualizar...',
 
     'staffPortal.header.waiterFallback': 'Empregado de mesa',
@@ -395,6 +398,7 @@ export const staffPortal: Record<Locale, Record<string, string>> = {
     'staffPortal.actions.markItemServed': 'Serviert',
     'staffPortal.actions.itemServedLabel': 'Serviert',
     'staffPortal.actions.itemUnavailableLabel': 'Nicht verfügbar',
+    'staffPortal.actions.itemStillInKitchen': 'In der Küche',
     'staffPortal.actions.updating': 'Wird aktualisiert...',
 
     'staffPortal.header.waiterFallback': 'Kellner',
@@ -507,6 +511,7 @@ export const staffPortal: Record<Locale, Record<string, string>> = {
     'staffPortal.actions.markItemServed': 'Servi',
     'staffPortal.actions.itemServedLabel': 'Servi',
     'staffPortal.actions.itemUnavailableLabel': 'Indisponible',
+    'staffPortal.actions.itemStillInKitchen': 'En cuisine',
     'staffPortal.actions.updating': 'Mise à jour...',
 
     'staffPortal.header.waiterFallback': 'Serveur',

@@ -62,7 +62,7 @@ type OrderItem = {
   quantity: number;
   unitPriceCents: number;
   modifiers?: OrderModifier[];
-  status?: 'PENDING' | 'SERVED' | 'UNAVAILABLE';
+  status?: 'PENDING' | 'SENT_TO_WAITER' | 'SERVED' | 'UNAVAILABLE';
 };
 
 type OrderStaff = {
@@ -282,6 +282,8 @@ function normalizeOrders(
 
           status:
             item.status ===
+              'SENT_TO_WAITER' ||
+            item.status ===
               'SERVED' ||
             item.status ===
               'UNAVAILABLE'
@@ -386,6 +388,21 @@ function normalizeOrders(
           : null,
     };
   });
+}
+
+// An order belongs in the "ready to serve" section either because the
+// whole thing is READY, or because the kitchen sent at least one item
+// ahead of the rest (a drink in an otherwise food-heavy order) even
+// though the order as a whole hasn't reached READY yet.
+function hasServableItem(
+  order: StaffOrder
+) {
+  return (
+    order.status === 'READY' ||
+    order.items.some(
+      (item) => item.status === 'SENT_TO_WAITER'
+    )
+  );
 }
 
 function orderPriority(
@@ -1558,8 +1575,7 @@ export default function StaffOrdersPage() {
         orders
           .filter(
             (order) =>
-              order.status ===
-                'READY' &&
+              hasServableItem(order) &&
               order.staffId ===
                 myStaffId
           )
@@ -1581,8 +1597,7 @@ export default function StaffOrdersPage() {
         orders
           .filter(
             (order) =>
-              order.status ===
-                'READY' &&
+              hasServableItem(order) &&
               order.staffId ===
                 null
           )
@@ -1603,8 +1618,7 @@ export default function StaffOrdersPage() {
       () =>
         orders.filter(
           (order) =>
-            order.status ===
-              'READY' &&
+            hasServableItem(order) &&
             order.staffId !==
               null &&
             order.staffId !==
@@ -2087,8 +2101,12 @@ export default function StaffOrdersPage() {
                           </p>
                         </div>
 
-                        <span className="inline-flex border border-[#477052]/20 bg-[#477052]/10 text-[#406449] px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.1em]">
-                          {t('staffPortal.status.ready')}
+                        <span
+                          className={`inline-flex border px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.1em] ${statusClass(
+                            order.status
+                          )}`}
+                        >
+                          {statusLabel(order.status, t)}
                         </span>
                       </div>
 
@@ -2148,8 +2166,12 @@ export default function StaffOrdersPage() {
                               </span>
 
                               {mine &&
-                                item.status ===
-                                  'PENDING' && (
+                                (item.status ===
+                                  'SENT_TO_WAITER' ||
+                                  (item.status ===
+                                    'PENDING' &&
+                                    order.status ===
+                                      'READY')) && (
                                   <button
                                     type="button"
                                     disabled={
@@ -2169,6 +2191,15 @@ export default function StaffOrdersPage() {
                                       ? t('staffPortal.actions.updating')
                                       : t('staffPortal.actions.markItemServed')}
                                   </button>
+                                )}
+
+                              {item.status ===
+                                'PENDING' &&
+                                order.status !==
+                                  'READY' && (
+                                  <span className="shrink-0 text-[10px] uppercase tracking-[0.06em] text-[#1A134D]/35">
+                                    {t('staffPortal.actions.itemStillInKitchen')}
+                                  </span>
                                 )}
 
                               {item.status ===

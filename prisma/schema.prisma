@@ -275,6 +275,7 @@ model OrderItem {
   lineTotalCents  Int
   notes           String?
   status          OrderItemStatus     @default(PENDING)
+  sentToWaiterAt  DateTime?
   servedAt        DateTime?
   unavailableAt   DateTime?
   unavailableNote String?
@@ -287,6 +288,7 @@ model OrderItem {
 
 enum OrderItemStatus {
   PENDING
+  SENT_TO_WAITER
   SERVED
   UNAVAILABLE
 }
@@ -437,6 +439,7 @@ enum OrderEventType {
   ORDER_CANCELLED
   ORDER_CLAIMED
   ITEM_SERVED
+  ITEM_SENT_TO_WAITER
   ITEM_UNAVAILABLE
   PAYMENT_STARTED
   PAYMENT_SUCCEEDED

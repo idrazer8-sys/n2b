@@ -7,6 +7,7 @@ import { errorResponse } from '@/src/lib/api-response';
 
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('SERVE') }),
+  z.object({ action: z.literal('SEND_TO_WAITER') }),
   z.object({
     action: z.literal('UNAVAILABLE'),
     note: z.string().trim().max(280).optional(),
@@ -17,11 +18,15 @@ type RouteContext = {
   params: { restaurantId: string; orderId: string; itemId: string };
 };
 
+const NOT_YET_READY = ['NEW', 'ACCEPTED', 'PREPARING'];
+const TERMINAL_ORDER_STATUSES = ['COMPLETED', 'CANCELLED', 'REJECTED'];
+
 // Waiters mark individual items served as they're delivered (drinks out
 // before the mains are ready, say) instead of the whole order at once.
-// Kitchen marks an individual item unavailable (86'd) without rejecting
-// the rest of the order — the customer sees this on their order-status
-// page and can order something else instead.
+// Kitchen can also release a single item to the waiter early — a drink
+// sitting in an otherwise food-heavy order — without waiting for the
+// rest of the order to reach READY, or mark an item unavailable (86'd)
+// without rejecting the rest of the order.
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
   try {
     const access = await requireRestaurantAccess(params.restaurantId, 'STAFF');
@@ -44,19 +49,65 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    if (item.status !== 'PENDING') {
-      return NextResponse.json(
-        { error: `Item is already ${item.status.toLowerCase()}` },
-        { status: 409 }
-      );
-    }
-
     const now = new Date();
 
-    if (body.action === 'SERVE') {
-      if (item.order.status !== 'READY') {
+    if (body.action === 'SEND_TO_WAITER') {
+      if (item.status !== 'PENDING') {
         return NextResponse.json(
-          { error: `Cannot serve an item until the order is READY (currently ${item.order.status})` },
+          { error: `Item is already ${item.status.toLowerCase()}` },
+          { status: 409 }
+        );
+      }
+
+      if (!NOT_YET_READY.includes(item.order.status)) {
+        return NextResponse.json(
+          { error: `Order is already ${item.order.status} — nothing to send ahead` },
+          { status: 409 }
+        );
+      }
+
+      const updatedItem = await db.$transaction(async (tx) => {
+        const savedItem = await tx.orderItem.update({
+          where: { id: item.id },
+          data: { status: 'SENT_TO_WAITER', sentToWaiterAt: now },
+        });
+
+        await tx.orderEvent.create({
+          data: {
+            orderId: item.orderId,
+            restaurantId: params.restaurantId,
+            type: 'ITEM_SENT_TO_WAITER',
+            actorUserId: access.user.id,
+            metadata: { itemId: item.id, nameSnapshot: item.nameSnapshot },
+            createdAt: now,
+          },
+        });
+
+        return savedItem;
+      });
+
+      publishOrderEvent(params.restaurantId, {
+        type: 'ORDER_STATUS_CHANGED',
+        orderId: item.orderId,
+        status: item.order.status,
+      });
+
+      return NextResponse.json(updatedItem);
+    }
+
+    if (body.action === 'SERVE') {
+      const eligible =
+        (item.status === 'PENDING' && item.order.status === 'READY') ||
+        item.status === 'SENT_TO_WAITER';
+
+      if (!eligible) {
+        return NextResponse.json(
+          {
+            error:
+              item.status !== 'PENDING' && item.status !== 'SENT_TO_WAITER'
+                ? `Item is already ${item.status.toLowerCase()}`
+                : `Cannot serve an item until the order is READY or it's been sent ahead (currently ${item.order.status})`,
+          },
           { status: 409 }
         );
       }
@@ -80,13 +131,20 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
         // Once every item that's still expected (i.e. not 86'd) has been
         // served, the order itself is done — complete it automatically so
-        // the waiter doesn't also have to press a separate whole-order
-        // button.
+        // nobody has to also press a separate whole-order button. This can
+        // now happen even while the order's own status never reached
+        // READY, if every item was individually sent ahead and served.
         const remaining = await tx.orderItem.count({
-          where: { orderId: item.orderId, status: 'PENDING' },
+          where: {
+            orderId: item.orderId,
+            status: { in: ['PENDING', 'SENT_TO_WAITER'] },
+          },
         });
 
-        if (remaining === 0 && item.order.status === 'READY') {
+        if (
+          remaining === 0 &&
+          !TERMINAL_ORDER_STATUSES.includes(item.order.status)
+        ) {
           await tx.order.update({
             where: { id: item.orderId },
             data: { status: 'COMPLETED', completedAt: now },
@@ -98,7 +156,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
               restaurantId: params.restaurantId,
               type: 'ORDER_COMPLETED',
               actorUserId: access.user.id,
-              metadata: { fromStatus: 'READY', toStatus: 'COMPLETED', auto: true },
+              metadata: {
+                fromStatus: item.order.status,
+                toStatus: 'COMPLETED',
+                auto: true,
+              },
               createdAt: now,
             },
           });
@@ -116,10 +178,17 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       return NextResponse.json(updatedItem);
     }
 
-    // UNAVAILABLE — only makes sense before the order has reached the
-    // customer; once it's READY/COMPLETED the kitchen shouldn't be able to
-    // retroactively 86 something that may already be on its way out.
-    if (['READY', 'COMPLETED', 'CANCELLED', 'REJECTED'].includes(item.order.status)) {
+    // UNAVAILABLE — only makes sense before the item's left the kitchen;
+    // once it's been sent to the waiter, served, or the whole order is
+    // READY/done, the kitchen shouldn't be able to retroactively 86 it.
+    if (item.status !== 'PENDING') {
+      return NextResponse.json(
+        { error: `Item is already ${item.status.toLowerCase()}` },
+        { status: 409 }
+      );
+    }
+
+    if (!NOT_YET_READY.includes(item.order.status)) {
       return NextResponse.json(
         { error: `Cannot mark an item unavailable once the order is ${item.order.status}` },
         { status: 409 }

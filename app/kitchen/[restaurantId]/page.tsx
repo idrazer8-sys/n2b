@@ -33,7 +33,7 @@ type Order = {
     nameSnapshot: string;
     quantity: number;
     notes: string | null;
-    status: 'PENDING' | 'SERVED' | 'UNAVAILABLE';
+    status: 'PENDING' | 'SENT_TO_WAITER' | 'SERVED' | 'UNAVAILABLE';
     kitchenKind: 'FOOD' | 'DRINKS' | 'DESSERT';
   }[];
 };
@@ -76,6 +76,7 @@ function KitchenOrderCard({
   onAction,
   markingItemId,
   onMarkItemUnavailable,
+  onSendItemToWaiter,
   secondaryActionLabel,
   onSecondaryAction,
 }: {
@@ -86,6 +87,7 @@ function KitchenOrderCard({
   onAction: () => void;
   markingItemId: string | null;
   onMarkItemUnavailable: (itemId: string, note: string) => void;
+  onSendItemToWaiter: (itemId: string) => void;
   secondaryActionLabel?: string;
   onSecondaryAction?: () => void;
 }) {
@@ -135,22 +137,50 @@ function KitchenOrderCard({
                 {item.nameSnapshot}
               </span>
 
-              {item.status === 'UNAVAILABLE' ? (
+              {item.status === 'UNAVAILABLE' && (
                 <span className="text-[10px] uppercase tracking-[0.08em] text-[#e2a5a5]">
                   {t('staffMisc.kitchen.itemUnavailable')}
                 </span>
-              ) : notePromptItemId === item.id ? null : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNotePromptItemId(item.id);
-                    setNote('');
-                  }}
-                  className="text-[10px] uppercase tracking-[0.08em] text-white/40 hover:text-[#e2a5a5] shrink-0"
-                >
-                  {t('staffMisc.kitchen.markUnavailable')}
-                </button>
               )}
+
+              {item.status === 'SENT_TO_WAITER' && (
+                <span className="text-[10px] uppercase tracking-[0.08em] text-[#8ee6b4]">
+                  {t('staffMisc.kitchen.itemSentToWaiter')}
+                </span>
+              )}
+
+              {item.status === 'SERVED' && (
+                <span className="text-[10px] uppercase tracking-[0.08em] text-white/30">
+                  {t('staffPortal.actions.itemServedLabel')}
+                </span>
+              )}
+
+              {item.status === 'PENDING' &&
+                notePromptItemId !== item.id && (
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button
+                      type="button"
+                      disabled={markingItemId === item.id}
+                      onClick={() =>
+                        onSendItemToWaiter(item.id)
+                      }
+                      className="text-[10px] uppercase tracking-[0.08em] text-white/40 hover:text-[#8ee6b4] disabled:opacity-40"
+                    >
+                      {t('staffMisc.kitchen.sendItemToWaiter')}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotePromptItemId(item.id);
+                        setNote('');
+                      }}
+                      className="text-[10px] uppercase tracking-[0.08em] text-white/40 hover:text-[#e2a5a5]"
+                    >
+                      {t('staffMisc.kitchen.markUnavailable')}
+                    </button>
+                  </div>
+                )}
             </div>
 
             {item.notes && (
@@ -468,6 +498,48 @@ export default function KitchenPage() {
     }
   }
 
+  async function markItemSentToWaiter(
+    orderId: string,
+    itemId: string
+  ) {
+    try {
+      setMarkingItemId(itemId);
+      setError(null);
+
+      const response = await fetch(
+        `/api/restaurants/${restaurantId}/orders/${orderId}/items/${itemId}`,
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'SEND_TO_WAITER',
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ?? t('staffMisc.kitchen.couldNotUpdateOrder')
+        );
+      }
+
+      await load();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('staffMisc.kitchen.couldNotUpdateOrder')
+      );
+    } finally {
+      setMarkingItemId(null);
+    }
+  }
+
   const newOrders = orders.filter(
     (order) => order.status === 'NEW'
   );
@@ -609,6 +681,9 @@ export default function KitchenPage() {
                     onMarkItemUnavailable={(itemId, note) =>
                       void markItemUnavailable(order.id, itemId, note)
                     }
+                    onSendItemToWaiter={(itemId) =>
+                      void markItemSentToWaiter(order.id, itemId)
+                    }
                     secondaryActionLabel={
                       isDrinksOnly(order)
                         ? t('staffMisc.kitchen.sendDirectToWaiter')
@@ -659,6 +734,9 @@ export default function KitchenPage() {
                     onMarkItemUnavailable={(itemId, note) =>
                       void markItemUnavailable(order.id, itemId, note)
                     }
+                    onSendItemToWaiter={(itemId) =>
+                      void markItemSentToWaiter(order.id, itemId)
+                    }
                   />
                 ))
               )}
@@ -698,6 +776,9 @@ export default function KitchenPage() {
                     markingItemId={markingItemId}
                     onMarkItemUnavailable={(itemId, note) =>
                       void markItemUnavailable(order.id, itemId, note)
+                    }
+                    onSendItemToWaiter={(itemId) =>
+                      void markItemSentToWaiter(order.id, itemId)
                     }
                   />
                 ))
