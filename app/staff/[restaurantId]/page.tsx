@@ -2079,7 +2079,10 @@ export default function StaffOrdersPage() {
                 (order) => {
                   const mine =
                     order.staffId ===
-                    myStaffId;
+                      myStaffId ||
+                    (canActOnAnyReadyOrder &&
+                      order.staffId !==
+                        null);
 
                   const unclaimed =
                     order.staffId ===
