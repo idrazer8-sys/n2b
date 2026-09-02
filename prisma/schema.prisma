@@ -18,6 +18,7 @@ model User {
   staffMemberships         RestaurantStaff[]
   confirmedSessionPayments SessionPayment[]  @relation("SessionPaymentConfirmedBy")
   confirmedPayments        Payment[]         @relation("PaymentConfirmedBy")
+  createdReservations      Reservation[]     @relation("ReservationCreatedBy")
 }
 
 model RestaurantStaff {
@@ -57,6 +58,7 @@ model Restaurant {
   isOpen                 Boolean           @default(true)
   isActive               Boolean           @default(true)
   allowPayAtRestaurant   Boolean           @default(true)
+  reservationBufferMinutes Int             @default(15)
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
   googleReviewUrl        String?
@@ -74,6 +76,9 @@ model Restaurant {
   tables                 Table[]
   TableAssignment        TableAssignment[]
   SupportConversation    SupportConversation[]
+  tableZones             TableZone[]
+  reservations           Reservation[]
+  cashDenominations      CashDenomination[]
 
   @@index([slug])
 }
@@ -115,12 +120,21 @@ model Table {
   token           String             @unique @default(cuid())
   isActive        Boolean            @default(true)
   createdAt       DateTime           @default(now())
+  zoneId          String?
+  x               Int?
+  y               Int?
+  width           Int?               @default(88)
+  height          Int?               @default(88)
+  shape           TableShape         @default(SQUARE)
   orders          Order[]
   restaurant      Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  zone            TableZone?         @relation(fields: [zoneId], references: [id])
   TableAssignment TableAssignment[]
+  reservations    Reservation[]
 
   @@index([restaurantId])
   @@index([token])
+  @@index([zoneId])
 }
 
 model MenuCategory {
@@ -191,6 +205,7 @@ model CustomerSession {
   id             String          @id @default(cuid())
   restaurantId   String
   tableId        String
+  partySize      Int?
   createdAt      DateTime        @default(now())
   expiresAt      DateTime
   finalizedAt    DateTime?
@@ -292,6 +307,8 @@ model SessionPayment {
   status                  SessionPaymentStatus     @default(REQUIRES_PAYMENT)
   paymentMethod           PaymentMethod            @default(ONLINE)
   collectionMethod        PaymentCollectionMethod?
+  isSplit                 Boolean                  @default(false)
+  cashTenderedCents       Int?
   amountCents             Int
   currency                String
   applicationFeeCents     Int
@@ -302,6 +319,7 @@ model SessionPayment {
   updatedAt               DateTime                 @updatedAt
   customerSession         CustomerSession          @relation(fields: [customerSessionId], references: [id], onDelete: Cascade)
   confirmedBy             User?                    @relation("SessionPaymentConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  splits                  SessionPaymentSplit[]
 
   @@index([customerSessionId])
   @@index([confirmedByUserId])
@@ -472,4 +490,80 @@ enum SupportMessageRole {
   USER
   ASSISTANT
   HUMAN
+}
+
+model TableZone {
+  id           String     @id @default(cuid())
+  restaurantId String
+  name         String
+  x            Int        @default(0)
+  y            Int        @default(0)
+  width        Int        @default(260)
+  height       Int        @default(220)
+  createdAt    DateTime   @default(now())
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tables       Table[]
+
+  @@index([restaurantId])
+}
+
+enum TableShape {
+  SQUARE
+  RECT
+  CIRCLE
+}
+
+model Reservation {
+  id              String            @id @default(cuid())
+  restaurantId    String
+  tableId         String
+  startsAt        DateTime
+  partySize       Int
+  customerName    String?
+  customerPhone   String?
+  notes           String?
+  status          ReservationStatus @default(CONFIRMED)
+  createdByUserId String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  restaurant      Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  table           Table             @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  createdBy       User?             @relation("ReservationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId])
+  @@index([tableId])
+  @@index([restaurantId, startsAt])
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+model CashDenomination {
+  id           String     @id @default(cuid())
+  restaurantId String
+  valueCents   Int
+  quantity     Int        @default(0)
+  updatedAt    DateTime   @updatedAt
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, valueCents])
+  @@index([restaurantId])
+}
+
+model SessionPaymentSplit {
+  id               String         @id @default(cuid())
+  sessionPaymentId String
+  personIndex      Int
+  label            String?
+  shareCents       Int
+  tenderedCents    Int?
+  createdAt        DateTime       @default(now())
+  sessionPayment   SessionPayment @relation(fields: [sessionPaymentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionPaymentId, personIndex])
+  @@index([sessionPaymentId])
 }

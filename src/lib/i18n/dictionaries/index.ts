@@ -11,6 +11,9 @@ import { staffMisc } from './staffMisc';
 import { adminSupport } from './adminSupport';
 import { billing } from './billing';
 import { marketing } from './marketing';
+import { floorPlan } from './floorPlan';
+import { reservations } from './reservations';
+import { cashDrawer } from './cashDrawer';
 
 const NAMESPACES: Record<Locale, Record<string, string>>[] = [
   common,
@@ -25,6 +28,9 @@ const NAMESPACES: Record<Locale, Record<string, string>>[] = [
   adminSupport,
   billing,
   marketing,
+  floorPlan,
+  reservations,
+  cashDrawer,
 ];
 
 const cache = new Map<Locale, Record<string, string>>();

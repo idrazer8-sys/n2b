@@ -7,6 +7,12 @@ import { errorResponse } from '@/src/lib/api-response';
 const schema = z.object({
   label: z.string().min(1).max(40).optional(),
   isActive: z.boolean().optional(),
+  zoneId: z.string().min(1).nullable().optional(),
+  x: z.number().int().min(0).max(4000).optional(),
+  y: z.number().int().min(0).max(4000).optional(),
+  width: z.number().int().min(30).max(600).optional(),
+  height: z.number().int().min(30).max(600).optional(),
+  shape: z.enum(['SQUARE', 'RECT', 'CIRCLE']).optional(),
 });
 
 export async function PATCH(
@@ -22,6 +28,16 @@ export async function PATCH(
       where: { id: params.tableId, restaurantId: params.restaurantId },
     });
     if (!existing) return NextResponse.json({ error: 'Table not found' }, { status: 404 });
+
+    if (body.zoneId) {
+      const zone = await db.tableZone.findFirst({
+        where: { id: body.zoneId, restaurantId: params.restaurantId },
+        select: { id: true },
+      });
+      if (!zone) {
+        return NextResponse.json({ error: 'Zone not found' }, { status: 404 });
+      }
+    }
 
     const updated = await db.table.update({ where: { id: params.tableId }, data: body });
     return NextResponse.json(updated);

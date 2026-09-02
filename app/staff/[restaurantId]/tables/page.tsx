@@ -21,6 +21,15 @@ type Assignment = {
   table: Table;
 };
 
+type SplitEntry = {
+  id: string;
+  personIndex: number;
+  label: string | null;
+  shareCents: number;
+  tenderedCents: number | null;
+  changeDueCents: number | null;
+};
+
 type TableStatus = {
   table: Table;
   status:
@@ -33,6 +42,10 @@ type TableStatus = {
   statusLabel: string;
   collectionMethod: 'CASH' | 'CARD' | 'OTHER' | null;
   totalCents: number;
+  isSplit?: boolean;
+  cashTenderedCents?: number | null;
+  changeDueCents?: number | null;
+  splits?: SplitEntry[];
 };
 
 function money(cents: number, currency: string) {
@@ -409,6 +422,60 @@ export default function StaffTablesPage() {
                   <p className="text-xs opacity-60 mt-1">
                     {t('staffMisc.tables.goToPaymentRequest')}
                   </p>
+
+                  {item.collectionMethod === 'CASH' &&
+                    !item.isSplit &&
+                    item.cashTenderedCents != null && (
+                      <div className="mt-3 rounded-lg bg-current/5 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-[0.1em] opacity-60">
+                          {t('staffMisc.tables.tendered')}
+                        </p>
+                        <p className="text-sm font-medium">
+                          {money(item.cashTenderedCents, currency)}
+                        </p>
+                        <p className="text-[10px] uppercase tracking-[0.1em] opacity-60 mt-2">
+                          {t('staffMisc.tables.changeDue')}
+                        </p>
+                        <p className="font-display text-lg">
+                          {money(
+                            Math.max(0, item.changeDueCents ?? 0),
+                            currency
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                  {item.collectionMethod === 'CASH' &&
+                    item.isSplit &&
+                    item.splits &&
+                    item.splits.length > 0 && (
+                      <div className="mt-3 rounded-lg bg-current/5 px-3 py-2 space-y-2">
+                        <p className="text-[10px] uppercase tracking-[0.1em] opacity-60">
+                          {t('staffMisc.tables.splitBill')} ·{' '}
+                          {t('staffMisc.tables.perPersonChange')}
+                        </p>
+                        {item.splits.map((split) => (
+                          <div
+                            key={split.id}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <span>
+                              {split.label ?? `#${split.personIndex + 1}`} ·{' '}
+                              {t('staffMisc.tables.owes')}{' '}
+                              {money(split.shareCents, currency)}
+                            </span>
+                            <span className="font-medium">
+                              {split.tenderedCents != null
+                                ? money(
+                                    Math.max(0, split.changeDueCents ?? 0),
+                                    currency
+                                  )
+                                : t('staffMisc.tables.noChangeInfo')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                 </div>
               )}
 

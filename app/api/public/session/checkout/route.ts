@@ -17,6 +17,63 @@ export async function POST(req: NextRequest) {
         ? 'PAY_AT_RESTAURANT'
         : 'ONLINE';
 
+    const collectionMethod =
+      paymentMethod === 'PAY_AT_RESTAURANT' &&
+      ['CASH', 'CARD', 'OTHER'].includes(body.collectionMethod)
+        ? (body.collectionMethod as 'CASH' | 'CARD' | 'OTHER')
+        : null;
+
+    // Cash-only extras: either a single tendered amount, or — when the
+    // table is splitting the bill — a per-person breakdown. The customer
+    // enters what each person is paying; we store it as-is and let the
+    // waiter read off the change owed per person.
+    type ParsedSplit = {
+      personIndex: number;
+      label: string | null;
+      shareCents: number;
+      tenderedCents: number | null;
+    };
+
+    const rawSplits: unknown[] = Array.isArray(body.splits) ? body.splits : [];
+
+    const parsedSplits: ParsedSplit[] = [];
+
+    if (collectionMethod === 'CASH' && rawSplits.length > 0) {
+      for (let index = 0; index < rawSplits.length; index += 1) {
+        const entry = rawSplits[index];
+
+        if (!entry || typeof entry !== 'object') continue;
+
+        const record = entry as Record<string, unknown>;
+        const shareCents = Math.round(Number(record.shareCents));
+        const tenderedCentsRaw = record.tenderedCents;
+        const tenderedCents: number | null =
+          tenderedCentsRaw === undefined ||
+          tenderedCentsRaw === null ||
+          Number.isNaN(Number(tenderedCentsRaw))
+            ? null
+            : Math.round(Number(tenderedCentsRaw));
+        const label: string | null =
+          typeof record.label === 'string' && record.label.trim()
+            ? record.label.trim().slice(0, 60)
+            : null;
+
+        if (!Number.isFinite(shareCents) || shareCents <= 0) continue;
+
+        parsedSplits.push({ personIndex: index, label, shareCents, tenderedCents });
+      }
+    }
+
+    const isSplit = parsedSplits.length > 1;
+
+    const cashTenderedCents =
+      collectionMethod === 'CASH' &&
+      !isSplit &&
+      typeof body.cashTenderedCents === 'number' &&
+      Number.isFinite(body.cashTenderedCents)
+        ? Math.round(body.cashTenderedCents)
+        : null;
+
     const restaurants = await db.restaurant.findMany({
       where: { isActive: true },
       select: { id: true },
@@ -174,8 +231,27 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const payment =
-        await db.sessionPayment.upsert({
+      if (
+        isSplit &&
+        Math.abs(
+          parsedSplits.reduce(
+            (sum: number, item: ParsedSplit) => sum + item.shareCents,
+            0
+          ) -
+            amountCents
+        ) > parsedSplits.length
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'The split amounts must add up to the total bill',
+          },
+          { status: 400 }
+        );
+      }
+
+      const payment = await db.$transaction(async (tx) => {
+        const created = await tx.sessionPayment.upsert({
           where: {
             customerSessionId:
               session.id,
@@ -187,6 +263,10 @@ export async function POST(req: NextRequest) {
               'REQUIRES_PAYMENT',
             paymentMethod:
               'PAY_AT_RESTAURANT',
+            collectionMethod:
+              collectionMethod ?? undefined,
+            isSplit,
+            cashTenderedCents,
             amountCents,
             currency:
               restaurant.currency,
@@ -197,12 +277,35 @@ export async function POST(req: NextRequest) {
               'REQUIRES_PAYMENT',
             paymentMethod:
               'PAY_AT_RESTAURANT',
+            collectionMethod:
+              collectionMethod ?? undefined,
+            isSplit,
+            cashTenderedCents,
             amountCents,
             currency:
               restaurant.currency,
             applicationFeeCents,
           },
         });
+
+        await tx.sessionPaymentSplit.deleteMany({
+          where: { sessionPaymentId: created.id },
+        });
+
+        if (isSplit) {
+          await tx.sessionPaymentSplit.createMany({
+            data: parsedSplits.map((item: ParsedSplit) => ({
+              sessionPaymentId: created.id,
+              personIndex: item.personIndex,
+              label: item.label,
+              shareCents: item.shareCents,
+              tenderedCents: item.tenderedCents,
+            })),
+          });
+        }
+
+        return created;
+      });
 
       await db.customerSession.update({
         where: {
@@ -219,6 +322,8 @@ export async function POST(req: NextRequest) {
           'PAY_AT_RESTAURANT',
         paymentStatus:
           payment.status,
+        collectionMethod:
+          payment.collectionMethod,
         message:
           'Payment requested at the restaurant',
       });

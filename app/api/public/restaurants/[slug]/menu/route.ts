@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
 import { getOrCreateCustomerSession } from '@/src/lib/customer-session';
+import { isTableReservationBlocked, listAvailableTables } from '@/src/lib/reservations';
 
 // Public, unauthenticated endpoint — this is what the customer's browser
 // calls after tapping the NFC tag / scanning the QR code. Requires a valid
@@ -22,9 +23,36 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
     return NextResponse.json({ error: 'Invalid or inactive table' }, { status: 404 });
   }
 
+  // If a reservation is about to start at this table, block ordering until
+  // staff seat the reserved party — but tell the customer which other
+  // tables are free right now, so they aren't just left stuck.
+  const reservationBlocked = await isTableReservationBlocked(
+    restaurant.id,
+    table.id,
+    restaurant.reservationBufferMinutes
+  );
+
+  if (reservationBlocked) {
+    const availableTables = await listAvailableTables(
+      restaurant.id,
+      restaurant.reservationBufferMinutes,
+      table.id
+    );
+
+    return NextResponse.json(
+      {
+        blocked: true,
+        reason: 'RESERVATION_SOON',
+        table: { id: table.id, label: table.label },
+        availableTables,
+      },
+      { status: 409 }
+    );
+  }
+
   // Mint (or reuse) this customer's session up front, so the very first
   // response already carries the cookie the cart/checkout calls will need.
-  await getOrCreateCustomerSession(restaurant.id, table.id);
+  const customerSession = await getOrCreateCustomerSession(restaurant.id, table.id);
 
   const categories = await db.menuCategory.findMany({
     where: { restaurantId: restaurant.id },
@@ -47,6 +75,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       brandPrimaryColor: restaurant.brandPrimaryColor,
     },
     table: { id: table.id, label: table.label },
+    session: { id: customerSession.id, partySize: customerSession.partySize },
     categories,
   });
 }

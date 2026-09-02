@@ -17,6 +17,9 @@ import {
   KitchenIcon,
   WaiterBellIcon,
   SignOutIcon,
+  FloorPlanIcon,
+  CalendarIcon,
+  BanknoteIcon,
 } from '@/components/branding/icons';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 
@@ -102,6 +105,9 @@ export default function RestaurantDashboardLayout({
     { key: 'hub', label: t('dashboardCore.nav.dashboard'), href: base, icon: DashboardIcon },
     { key: 'menu', label: t('dashboardCore.nav.menu'), href: `${base}/menu`, icon: MenuBookIcon },
     { key: 'tables', label: t('dashboardCore.nav.tables'), href: `${base}/tables`, icon: TableIcon },
+    { key: 'piso', label: t('floorPlan.title'), href: `${base}/piso`, icon: FloorPlanIcon },
+    { key: 'reservations', label: t('reservations.title'), href: `${base}/reservations`, icon: CalendarIcon },
+    { key: 'cash', label: t('cashDrawer.title'), href: `${base}/cash`, icon: BanknoteIcon },
     { key: 'orders', label: t('dashboardCore.nav.orders'), href: `${base}/orders`, icon: OrdersIcon },
     { key: 'analytics', label: t('dashboardCore.nav.analytics'), href: `${base}/analytics`, icon: AnalyticsIcon },
     { key: 'waiters', label: t('dashboardCore.nav.waiters'), href: `${base}/waiters`, icon: StaffIcon },

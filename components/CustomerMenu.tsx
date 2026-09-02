@@ -50,7 +50,21 @@ type MenuResponse = {
     id: string;
     label: string;
   };
+  session: {
+    id: string;
+    partySize: number | null;
+  };
   categories: Category[];
+};
+
+type BlockedTableInfo = {
+  id: string;
+  label: string;
+};
+
+type BlockedInfo = {
+  table: BlockedTableInfo;
+  availableTables: BlockedTableInfo[];
 };
 
 type CartLine = {
@@ -75,6 +89,7 @@ export default function CustomerMenu({
 }) {
   const [data, setData] = useState<MenuResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [blockedInfo, setBlockedInfo] = useState<BlockedInfo | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<MenuItem | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -82,6 +97,10 @@ export default function CustomerMenu({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [dessertMode, setDessertMode] = useState(dessertOnly);
+  const [partySize, setPartySize] = useState<number | null>(null);
+  const [partySizeDraft, setPartySizeDraft] = useState(2);
+  const [confirmingPartySize, setConfirmingPartySize] = useState(false);
+  const [partySizeError, setPartySizeError] = useState<string | null>(null);
   const { t } = useI18n();
 
   useEffect(() => {
@@ -92,15 +111,29 @@ export default function CustomerMenu({
       }
     )
       .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
+          if (body && body.blocked) {
+            setBlockedInfo({
+              table: body.table,
+              availableTables: body.availableTables ?? [],
+            });
+            return null;
+          }
+
           throw new Error(body.error ?? t('customerFlow.menu.couldNotLoad'));
         }
 
-        return res.json();
+        return body as MenuResponse;
       })
-      .then((json: MenuResponse) => {
+      .then((json: MenuResponse | null) => {
+        if (!json) {
+          return;
+        }
+
         setData(json);
+        setPartySize(json.session?.partySize ?? null);
 
         setDessertMode(dessertOnly);
 
@@ -187,6 +220,77 @@ export default function CustomerMenu({
     }
   }
 
+  async function confirmPartySize() {
+    setConfirmingPartySize(true);
+    setPartySizeError(null);
+
+    try {
+      const res = await fetch(`/api/public/restaurants/${slug}/party-size`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partySize: partySizeDraft }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(json.error ?? t('common.somethingWentWrong'));
+      }
+
+      setPartySize(json.session?.partySize ?? partySizeDraft);
+    } catch (err) {
+      setPartySizeError(
+        err instanceof Error ? err.message : t('common.somethingWentWrong')
+      );
+    } finally {
+      setConfirmingPartySize(false);
+    }
+  }
+
+  if (blockedInfo) {
+    return (
+      <div className="min-h-screen bg-[#f7f3ec] text-[#29251f] flex items-center justify-center px-6">
+        <div className="w-full max-w-sm text-center">
+          <p className="text-[11px] uppercase tracking-[0.28em] text-[#29251f]/50 mb-2">
+            {blockedInfo.table.label}
+          </p>
+
+          <h1 className="font-display text-2xl leading-tight mb-3">
+            {t('customerFlow.reservationBlock.title')}
+          </h1>
+
+          <p className="text-sm text-[#29251f]/60 mb-6">
+            {t('customerFlow.reservationBlock.subtitle')}
+          </p>
+
+          {blockedInfo.availableTables.length > 0 ? (
+            <div className="text-left border border-[#29251f]/10 rounded-xl p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-[#29251f]/40 mb-3">
+                {t('customerFlow.reservationBlock.availableTables')}
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {blockedInfo.availableTables.map((table) => (
+                  <span
+                    key={table.id}
+                    className="inline-flex items-center px-3 py-1.5 rounded-full border border-[#29251f]/15 text-sm"
+                  >
+                    {table.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-[#29251f]/50">
+              {t('customerFlow.reservationBlock.noneAvailable')}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-[#f7f3ec] flex items-center justify-center px-6 text-center">
@@ -206,6 +310,85 @@ export default function CustomerMenu({
         <p className="text-[#29251f]/50 text-sm tracking-[0.15em] uppercase">
           {t('customerFlow.menu.preparing')}
         </p>
+      </div>
+    );
+  }
+
+  if (partySize === null) {
+    return (
+      <div className="min-h-screen bg-[#f7f3ec] text-[#29251f] flex items-center justify-center px-6">
+        <div className="w-full max-w-xs text-center">
+          {data.restaurant.logoUrl ? (
+            <img
+              src={data.restaurant.logoUrl}
+              alt={data.restaurant.name}
+              className="mx-auto h-14 w-14 object-contain mb-5"
+            />
+          ) : (
+            <div className="mx-auto mb-5 text-[#7b2d26] text-3xl" aria-hidden="true">
+              
+            </div>
+          )}
+
+          <p className="text-[11px] uppercase tracking-[0.28em] text-[#29251f]/50 mb-2">
+            {data.restaurant.name}
+          </p>
+
+          <h1 className="font-display text-2xl leading-tight mb-2">
+            {t('customerFlow.partySize.title')}
+          </h1>
+
+          <p className="text-sm text-[#29251f]/60 mb-6">
+            {t('customerFlow.partySize.subtitle')}
+          </p>
+
+          <div className="flex items-center justify-center gap-6 mb-6">
+            <button
+              type="button"
+              aria-label={t('customerFlow.partySize.decrease')}
+              onClick={() =>
+                setPartySizeDraft((n) => Math.max(1, n - 1))
+              }
+              className="h-11 w-11 rounded-full border border-[#29251f]/20 text-xl leading-none flex items-center justify-center hover:bg-[#29251f]/5"
+            >
+              −
+            </button>
+
+            <span className="font-display text-5xl w-16 text-center tabular-nums">
+              {partySizeDraft}
+            </span>
+
+            <button
+              type="button"
+              aria-label={t('customerFlow.partySize.increase')}
+              onClick={() =>
+                setPartySizeDraft((n) => Math.min(30, n + 1))
+              }
+              className="h-11 w-11 rounded-full border border-[#29251f]/20 text-xl leading-none flex items-center justify-center hover:bg-[#29251f]/5"
+            >
+              +
+            </button>
+          </div>
+
+          <p className="text-xs text-[#29251f]/50 mb-4">
+            {partySizeDraft === 1
+              ? `1 ${t('customerFlow.partySize.person')}`
+              : `${partySizeDraft} ${t('customerFlow.partySize.people')}`}
+          </p>
+
+          {partySizeError && (
+            <p className="text-xs text-red-600 mb-3">{partySizeError}</p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => void confirmPartySize()}
+            disabled={confirmingPartySize}
+            className="w-full bg-[#7b2d26] text-white rounded-lg py-3 text-sm font-medium tracking-wide disabled:opacity-60"
+          >
+            {t('customerFlow.partySize.confirm')}
+          </button>
+        </div>
       </div>
     );
   }

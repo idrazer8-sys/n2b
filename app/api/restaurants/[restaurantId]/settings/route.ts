@@ -9,6 +9,7 @@ const schema = z.object({
   kitchenSlaSeconds: z.number().int().min(60).max(3600).nullable().optional(),
   waiterSlaSeconds: z.number().int().min(30).max(1800).nullable().optional(),
   allowPayAtRestaurant: z.boolean().optional(),
+  reservationBufferMinutes: z.number().int().min(0).max(240).optional(),
 });
 
 type RouteContext = {
@@ -55,6 +56,7 @@ export async function GET(
         kitchenSlaSeconds: true,
         waiterSlaSeconds: true,
         allowPayAtRestaurant: true,
+        reservationBufferMinutes: true,
       },
     });
 
@@ -163,6 +165,9 @@ export async function PATCH(
         ...(body.allowPayAtRestaurant !== undefined
           ? { allowPayAtRestaurant: body.allowPayAtRestaurant }
           : {}),
+        ...(body.reservationBufferMinutes !== undefined
+          ? { reservationBufferMinutes: body.reservationBufferMinutes }
+          : {}),
         totalServiceSlaSeconds: total,
       },
       select: {
@@ -184,6 +189,7 @@ export async function PATCH(
         kitchenSlaSeconds: true,
         waiterSlaSeconds: true,
         allowPayAtRestaurant: true,
+        reservationBufferMinutes: true,
       },
     });
 

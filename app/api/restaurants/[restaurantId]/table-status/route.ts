@@ -80,7 +80,9 @@ export async function GET(
           },
           orderBy: { createdAt: 'desc' },
           include: {
-            sessionPayment: true,
+            sessionPayment: {
+              include: { splits: { orderBy: { personIndex: 'asc' } } },
+            },
             orders: {
               where: {
                 status: {
@@ -131,6 +133,7 @@ export async function GET(
             paymentMethod: payment?.paymentMethod ?? null,
             collectionMethod: payment?.collectionMethod ?? null,
             totalCents,
+            partySize: session.partySize,
             orders: activeOrders,
             updatedAt: (payment?.paidAt ?? session.paidAt).toISOString(),
           };
@@ -148,8 +151,28 @@ export async function GET(
             paymentMethod: payment.paymentMethod,
             collectionMethod: payment.collectionMethod,
             totalCents: payment.amountCents,
+            partySize: session.partySize,
             orders: activeOrders,
             updatedAt: payment.updatedAt.toISOString(),
+            isSplit: payment.isSplit,
+            cashTenderedCents: payment.cashTenderedCents,
+            changeDueCents:
+              payment.collectionMethod === 'CASH' &&
+              !payment.isSplit &&
+              payment.cashTenderedCents !== null
+                ? payment.cashTenderedCents - payment.amountCents
+                : null,
+            splits: payment.splits.map((split: { id: string; personIndex: number; label: string | null; shareCents: number; tenderedCents: number | null }) => ({
+              id: split.id,
+              personIndex: split.personIndex,
+              label: split.label,
+              shareCents: split.shareCents,
+              tenderedCents: split.tenderedCents,
+              changeDueCents:
+                payment.collectionMethod === 'CASH' && split.tenderedCents !== null
+                  ? split.tenderedCents - split.shareCents
+                  : null,
+            })),
           };
         }
 
@@ -165,6 +188,7 @@ export async function GET(
             paymentMethod: payment?.paymentMethod ?? null,
             collectionMethod: payment?.collectionMethod ?? null,
             totalCents,
+            partySize: session.partySize,
             orders: activeOrders,
             updatedAt: session.createdAt.toISOString(),
           };
@@ -179,6 +203,7 @@ export async function GET(
             paymentMethod: payment?.paymentMethod ?? null,
             collectionMethod: payment?.collectionMethod ?? null,
             totalCents,
+            partySize: session.partySize,
             orders: activeOrders,
             updatedAt: session.createdAt.toISOString(),
           };
@@ -192,6 +217,7 @@ export async function GET(
           paymentMethod: payment?.paymentMethod ?? null,
           collectionMethod: payment?.collectionMethod ?? null,
           totalCents: 0,
+          partySize: session.partySize,
           orders: [],
           updatedAt: session.createdAt.toISOString(),
         };

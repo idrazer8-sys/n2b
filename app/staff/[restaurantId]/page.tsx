@@ -105,6 +105,15 @@ type PaymentRequestOrder = {
   staffId: string | null;
 };
 
+type PaymentSplit = {
+  id: string;
+  personIndex: number;
+  label: string | null;
+  shareCents: number;
+  tenderedCents: number | null;
+  changeDueCents: number | null;
+};
+
 type PaymentRequest = {
   id: string;
   customerSessionId: string;
@@ -114,6 +123,10 @@ type PaymentRequest = {
     | 'CARD'
     | 'OTHER'
     | null;
+  isSplit?: boolean;
+  cashTenderedCents?: number | null;
+  changeDueCents?: number | null;
+  splits?: PaymentSplit[];
   status: string;
   amountCents: number;
   currency: string;
@@ -1803,6 +1816,18 @@ export default function StaffOrdersPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(
+                    `/staff/${restaurantId}/piso`
+                  )
+                }
+                className="border border-[#1A134D]/15 px-3 py-2 text-[10px] uppercase tracking-[0.1em]"
+              >
+                {t('floorPlan.title')}
+              </button>
+
               <LanguageSwitcher />
 
               <button
@@ -2485,6 +2510,66 @@ export default function StaffOrdersPage() {
                           t
                         )}
                       </p>
+
+                      {request.collectionMethod === 'CASH' &&
+                        !request.isSplit &&
+                        request.cashTenderedCents != null && (
+                          <div className="mt-3 rounded-lg bg-black/[0.03] px-3 py-2">
+                            <p className="text-[10px] uppercase tracking-[0.1em] text-ink/40">
+                              {t('staffMisc.tables.tendered')}
+                            </p>
+                            <p className="text-sm font-medium">
+                              {money(
+                                request.cashTenderedCents,
+                                request.currency || currency
+                              )}
+                            </p>
+                            <p className="text-[10px] uppercase tracking-[0.1em] text-ink/40 mt-2">
+                              {t('staffMisc.tables.changeDue')}
+                            </p>
+                            <p className="font-display text-lg">
+                              {money(
+                                Math.max(0, request.changeDueCents ?? 0),
+                                request.currency || currency
+                              )}
+                            </p>
+                          </div>
+                        )}
+
+                      {request.collectionMethod === 'CASH' &&
+                        request.isSplit &&
+                        request.splits &&
+                        request.splits.length > 0 && (
+                          <div className="mt-3 rounded-lg bg-black/[0.03] px-3 py-2 space-y-2">
+                            <p className="text-[10px] uppercase tracking-[0.1em] text-ink/40">
+                              {t('staffMisc.tables.splitBill')} ·{' '}
+                              {t('staffMisc.tables.perPersonChange')}
+                            </p>
+                            {request.splits.map((split) => (
+                              <div
+                                key={split.id}
+                                className="flex items-center justify-between text-sm"
+                              >
+                                <span>
+                                  {split.label ?? `#${split.personIndex + 1}`} ·{' '}
+                                  {t('staffMisc.tables.owes')}{' '}
+                                  {money(
+                                    split.shareCents,
+                                    request.currency || currency
+                                  )}
+                                </span>
+                                <span className="font-medium">
+                                  {split.tenderedCents != null
+                                    ? money(
+                                        Math.max(0, split.changeDueCents ?? 0),
+                                        request.currency || currency
+                                      )
+                                    : t('staffMisc.tables.noChangeInfo')}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                     </div>
 
                     <button

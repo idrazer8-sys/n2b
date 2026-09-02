@@ -102,6 +102,19 @@ export async function GET(
           // This is the method selected by the customer.
           // The waiter only reads it and confirms receipt.
           collectionMethod: true,
+          isSplit: true,
+          cashTenderedCents: true,
+
+          splits: {
+            orderBy: { personIndex: 'asc' },
+            select: {
+              id: true,
+              personIndex: true,
+              label: true,
+              shareCents: true,
+              tenderedCents: true,
+            },
+          },
 
           status: true,
           amountCents: true,
@@ -187,6 +200,40 @@ export async function GET(
         // The customer-selected payment method.
         collectionMethod:
           request.collectionMethod,
+
+        isSplit:
+          request.isSplit,
+
+        // Cash-specific: how much the customer said they'd hand over, and
+        // the change the waiter owes back. Null unless collectionMethod
+        // is CASH and the bill wasn't split.
+        cashTenderedCents:
+          request.cashTenderedCents,
+
+        changeDueCents:
+          request.collectionMethod === 'CASH' &&
+          !request.isSplit &&
+          request.cashTenderedCents !== null
+            ? request.cashTenderedCents -
+              request.amountCents
+            : null,
+
+        // Per-person breakdown when the table split the bill in cash:
+        // each entry carries what that person owes, what they said
+        // they'd hand over, and the change to give back to them.
+        splits:
+          request.splits.map((split: { id: string; personIndex: number; label: string | null; shareCents: number; tenderedCents: number | null }) => ({
+            id: split.id,
+            personIndex: split.personIndex,
+            label: split.label,
+            shareCents: split.shareCents,
+            tenderedCents: split.tenderedCents,
+            changeDueCents:
+              request.collectionMethod === 'CASH' &&
+              split.tenderedCents !== null
+                ? split.tenderedCents - split.shareCents
+                : null,
+          })),
 
         status:
           request.status,

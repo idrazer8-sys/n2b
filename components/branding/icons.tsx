@@ -163,3 +163,108 @@ export function SignOutIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function PlusIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 4.5v15M4.5 12h15" />
+    </Svg>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4.5 7h15" />
+      <path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2" />
+      <path d="M6.5 7l1 12.5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5L17.5 7" />
+      <path d="M10 11v6M14 11v6" />
+    </Svg>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 5l14 14M19 5 5 19" />
+    </Svg>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4.5 12.5l5 5 10-11" />
+    </Svg>
+  );
+}
+
+export function UsersIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
+      <circle cx="17" cy="9" r="2.25" />
+      <path d="M15.5 19c.2-2.2 1.6-3.8 3.5-4" />
+    </Svg>
+  );
+}
+
+export function CreditCardIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M6.5 14.5h3" />
+    </Svg>
+  );
+}
+
+export function UtensilsIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M7 3.5v7a1.5 1.5 0 0 0 3 0v-7M8.5 3.5v17M17 3.5c-1.5 1-2.5 3-2.5 5.5S15.5 13 17 13v7.5" />
+    </Svg>
+  );
+}
+
+export function ClipboardIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="5.5" y="4.5" width="13" height="16" rx="1.5" />
+      <path d="M9 4.5V3.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" />
+      <path d="M8.5 10.5h7M8.5 14h7M8.5 17.5h4.5" />
+    </Svg>
+  );
+}
+
+export function FloorPlanIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="1.5" />
+      <rect x="6" y="6" width="4.5" height="4.5" rx="0.75" />
+      <circle cx="16.5" cy="8.25" r="2.25" />
+      <rect x="6" y="13" width="12" height="4.5" rx="0.75" />
+    </Svg>
+  );
+}
+
+export function CalendarIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="1.5" />
+      <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+      <path d="M7.5 13h2.5M11.5 13h2.5M15.5 13h1M7.5 16.5h2.5M11.5 16.5h2.5M15.5 16.5h1" />
+    </Svg>
+  );
+}
+
+export function BanknoteIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="2.5" y="6" width="19" height="12" rx="1.5" />
+      <circle cx="12" cy="12" r="2.75" />
+      <path d="M5.5 9v0M18.5 15v0" />
+    </Svg>
+  );
+}

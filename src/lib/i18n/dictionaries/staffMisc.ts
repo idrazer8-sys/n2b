@@ -61,6 +61,14 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.tables.cash': 'Efectivo',
     'staffMisc.tables.card': 'Tarjeta',
     'staffMisc.tables.other': 'Otro',
+    'staffMisc.tables.changeDue': 'Cambio a devolver',
+    'staffMisc.tables.changeDueAmount': 'Devolver {{amount}}',
+    'staffMisc.tables.exactAmount': 'Importe exacto, sin cambio',
+    'staffMisc.tables.tendered': 'El cliente paga con',
+    'staffMisc.tables.splitBill': 'Cuenta dividida',
+    'staffMisc.tables.perPersonChange': 'Cambio por persona',
+    'staffMisc.tables.owes': 'Debe',
+    'staffMisc.tables.noChangeInfo': 'El cliente no indicó con cuánto paga.',
 
     // StaffPortalLogin.tsx
     'staffMisc.login.checkingAccess': 'Comprobando el acceso...',
@@ -158,6 +166,14 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.tables.cash': 'Cash',
     'staffMisc.tables.card': 'Card',
     'staffMisc.tables.other': 'Other',
+    'staffMisc.tables.changeDue': 'Change due',
+    'staffMisc.tables.changeDueAmount': 'Give back {{amount}}',
+    'staffMisc.tables.exactAmount': 'Exact amount, no change',
+    'staffMisc.tables.tendered': 'Customer is paying with',
+    'staffMisc.tables.splitBill': 'Split bill',
+    'staffMisc.tables.perPersonChange': 'Change per person',
+    'staffMisc.tables.owes': 'Owes',
+    'staffMisc.tables.noChangeInfo': 'The customer did not say how much they will hand over.',
 
     // StaffPortalLogin.tsx
     'staffMisc.login.checkingAccess': 'Checking access...',
@@ -258,6 +274,14 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.tables.cash': 'Dinheiro',
     'staffMisc.tables.card': 'Cartão',
     'staffMisc.tables.other': 'Outro',
+    'staffMisc.tables.changeDue': 'Troco a devolver',
+    'staffMisc.tables.changeDueAmount': 'Devolver {{amount}}',
+    'staffMisc.tables.exactAmount': 'Valor exato, sem troco',
+    'staffMisc.tables.tendered': 'O cliente paga com',
+    'staffMisc.tables.splitBill': 'Conta dividida',
+    'staffMisc.tables.perPersonChange': 'Troco por pessoa',
+    'staffMisc.tables.owes': 'Deve',
+    'staffMisc.tables.noChangeInfo': 'O cliente não indicou com quanto vai pagar.',
 
     // StaffPortalLogin.tsx
     'staffMisc.login.checkingAccess': 'A verificar o acesso...',
@@ -365,6 +389,14 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.tables.cash': 'Bar',
     'staffMisc.tables.card': 'Karte',
     'staffMisc.tables.other': 'Sonstiges',
+    'staffMisc.tables.changeDue': 'Rückgeld',
+    'staffMisc.tables.changeDueAmount': '{{amount}} zurückgeben',
+    'staffMisc.tables.exactAmount': 'Passend gezahlt, kein Wechselgeld',
+    'staffMisc.tables.tendered': 'Kunde zahlt mit',
+    'staffMisc.tables.splitBill': 'Geteilte Rechnung',
+    'staffMisc.tables.perPersonChange': 'Wechselgeld pro Person',
+    'staffMisc.tables.owes': 'Schuldet',
+    'staffMisc.tables.noChangeInfo': 'Der Gast hat nicht angegeben, mit wie viel er zahlt.',
 
     // StaffPortalLogin.tsx
     'staffMisc.login.checkingAccess': 'Zugriff wird geprüft...',
@@ -471,6 +503,14 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.tables.cash': 'Espèces',
     'staffMisc.tables.card': 'Carte',
     'staffMisc.tables.other': 'Autre',
+    'staffMisc.tables.changeDue': 'Monnaie à rendre',
+    'staffMisc.tables.changeDueAmount': 'Rendre {{amount}}',
+    'staffMisc.tables.exactAmount': 'Montant exact, pas de monnaie',
+    'staffMisc.tables.tendered': 'Le client paie avec',
+    'staffMisc.tables.splitBill': 'Addition partagée',
+    'staffMisc.tables.perPersonChange': 'Monnaie par personne',
+    'staffMisc.tables.owes': 'Doit',
+    'staffMisc.tables.noChangeInfo': "Le client n'a pas indiqué avec quel montant il paie.",
 
     // StaffPortalLogin.tsx
     'staffMisc.login.checkingAccess': "Vérification de l'accès...",

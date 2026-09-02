@@ -170,8 +170,44 @@ export default function OrderStatus({
     null
   );
 
+  const [splitBill, setSplitBill] =
+    useState(false);
+  const [splitCount, setSplitCount] =
+    useState(2);
+  const [personAmounts, setPersonAmounts] =
+    useState<string[]>(['', '']);
+  const [personTendered, setPersonTendered] =
+    useState<string[]>(['', '']);
+  const [cashTendered, setCashTendered] =
+    useState('');
+  const [splitError, setSplitError] =
+    useState<string | null>(null);
+
   const { t, locale } = useI18n();
   const steps = getSteps(t);
+
+  function parseAmountToCents(value: string): number | null {
+    const normalized = value.replace(',', '.').trim();
+    if (!normalized) return null;
+    const num = Number(normalized);
+    if (!Number.isFinite(num) || num < 0) return null;
+    return Math.round(num * 100);
+  }
+
+  function resizeSplit(count: number) {
+    const safeCount = Math.max(2, Math.min(20, count));
+    setSplitCount(safeCount);
+    setPersonAmounts((prev) => {
+      const next = prev.slice(0, safeCount);
+      while (next.length < safeCount) next.push('');
+      return next;
+    });
+    setPersonTendered((prev) => {
+      const next = prev.slice(0, safeCount);
+      while (next.length < safeCount) next.push('');
+      return next;
+    });
+  }
 
   async function loadOrder() {
     try {
@@ -321,6 +357,60 @@ export default function OrderStatus({
       return;
     }
 
+    setSplitError(null);
+
+    let cashExtras: Record<string, unknown> = {};
+
+    if (
+      paymentChoice === 'PAY_AT_RESTAURANT' &&
+      collectionChoice === 'CASH' &&
+      order
+    ) {
+      if (splitBill) {
+        const totalCents =
+          order.session.payableTotalCents;
+
+        const parsedShares = personAmounts.map(
+          (value) => parseAmountToCents(value)
+        );
+
+        if (parsedShares.some((cents) => cents === null || cents <= 0)) {
+          setSplitError(
+            t('customerFlow.order.splitInvalidAmounts')
+          );
+          return;
+        }
+
+        const shareSum = parsedShares.reduce(
+          (sum: number, cents) => sum + (cents ?? 0),
+          0
+        );
+
+        if (Math.abs(shareSum - totalCents) > splitCount) {
+          setSplitError(
+            t('customerFlow.order.splitDoesNotMatchTotal')
+          );
+          return;
+        }
+
+        cashExtras = {
+          splits: parsedShares.map((cents, index) => ({
+            label: `${t('customerFlow.order.person')} ${index + 1}`,
+            shareCents: cents,
+            tenderedCents: parseAmountToCents(
+              personTendered[index] ?? ''
+            ),
+          })),
+        };
+      } else if (cashTendered.trim()) {
+        const tenderedCents = parseAmountToCents(cashTendered);
+
+        if (tenderedCents !== null) {
+          cashExtras = { cashTenderedCents: tenderedCents };
+        }
+      }
+    }
+
     try {
       setFinishing(true);
       setError(null);
@@ -346,6 +436,7 @@ export default function OrderStatus({
               ? {
                   collectionMethod:
                     collectionChoice,
+                  ...cashExtras,
                 }
               : {}),
           }),
@@ -761,6 +852,162 @@ export default function OrderStatus({
                   )
                 )}
               </div>
+            </div>
+          )}
+
+          {order.restaurant
+            .allowPayAtRestaurant &&
+          paymentChoice === 'PAY_AT_RESTAURANT' &&
+          collectionChoice === 'CASH' && (
+            <div className="mt-5 border-t border-line pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setSplitBill((prev) => !prev);
+                  setSplitError(null);
+                }}
+                className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] text-[#7b2d26]"
+              >
+                <span
+                  className="inline-block h-4 w-4 rounded border"
+                  style={{
+                    borderColor: '#7b2d26',
+                    background: splitBill
+                      ? '#7b2d26'
+                      : 'transparent',
+                  }}
+                />
+                {t('customerFlow.order.splitBillToggle')}
+              </button>
+
+              {!splitBill && (
+                <div className="mt-4">
+                  <label className="block text-[10px] uppercase tracking-[0.15em] text-ink/40 mb-2">
+                    {t('customerFlow.order.cashTenderedLabel')}
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={cashTendered}
+                    onChange={(e) =>
+                      setCashTendered(
+                        e.target.value
+                      )
+                    }
+                    placeholder={formatCents(
+                      order.session.payableTotalCents,
+                      order.currency
+                    )}
+                    className="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                  />
+                  <p className="mt-1 text-xs text-ink/40">
+                    {t('customerFlow.order.cashTenderedHint')}
+                  </p>
+                </div>
+              )}
+
+              {splitBill && (
+                <div className="mt-4 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <label className="text-[10px] uppercase tracking-[0.15em] text-ink/40">
+                      {t('customerFlow.order.numberOfPeople')}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          resizeSplit(splitCount - 1)
+                        }
+                        className="h-7 w-7 rounded-full border border-line flex items-center justify-center"
+                      >
+                        −
+                      </button>
+                      <span className="w-5 text-center text-sm font-medium">
+                        {splitCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          resizeSplit(splitCount + 1)
+                        }
+                        className="h-7 w-7 rounded-full border border-line flex items-center justify-center"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {Array.from({ length: splitCount }).map(
+                    (_, index) => (
+                      <div
+                        key={index}
+                        className="border border-line rounded-lg p-3"
+                      >
+                        <p className="text-xs font-medium mb-2">
+                          {t('customerFlow.order.person')}{' '}
+                          {index + 1}
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[9px] uppercase tracking-[0.12em] text-ink/40 mb-1">
+                              {t('customerFlow.order.personShareLabel')}
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={
+                                personAmounts[index] ?? ''
+                              }
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setPersonAmounts((prev) => {
+                                  const next = [...prev];
+                                  next[index] = value;
+                                  return next;
+                                });
+                              }}
+                              className="w-full border border-line rounded-lg px-2 py-1.5 text-sm"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[9px] uppercase tracking-[0.12em] text-ink/40 mb-1">
+                              {t('customerFlow.order.personTenderedLabel')}
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={
+                                personTendered[index] ?? ''
+                              }
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setPersonTendered((prev) => {
+                                  const next = [...prev];
+                                  next[index] = value;
+                                  return next;
+                                });
+                              }}
+                              className="w-full border border-line rounded-lg px-2 py-1.5 text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  <p className="text-xs text-ink/40">
+                    {t('customerFlow.order.splitHint')}
+                  </p>
+                </div>
+              )}
+
+              {splitError && (
+                <p className="mt-3 text-xs text-red-600">
+                  {splitError}
+                </p>
+              )}
             </div>
           )}
 
