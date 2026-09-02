@@ -66,6 +66,7 @@ export const ordersWaiters: Record<Locale, Record<string, string>> = {
     'ordersWaiters.staff.archiving': 'Archivando...',
     'ordersWaiters.staff.deleteAccount': 'Eliminar cuenta',
     'ordersWaiters.staff.loadingStaff': 'Cargando personal...',
+    'ordersWaiters.staff.eyebrow': 'Personal del restaurante',
     'ordersWaiters.staff.pageTitle': 'Personal',
     'ordersWaiters.staff.pageDescription':
       'Crea cuentas de personal, elige su portal, asigna camareros a mesas y gestiona el historial de cuentas.',
@@ -190,6 +191,7 @@ export const ordersWaiters: Record<Locale, Record<string, string>> = {
     'ordersWaiters.staff.archiving': 'Archiving...',
     'ordersWaiters.staff.deleteAccount': 'Delete account',
     'ordersWaiters.staff.loadingStaff': 'Loading staff...',
+    'ordersWaiters.staff.eyebrow': 'Restaurant staff',
     'ordersWaiters.staff.pageTitle': 'Staff',
     'ordersWaiters.staff.pageDescription':
       'Create staff accounts, choose their portal, assign Waiters to tables and manage account history.',
@@ -319,6 +321,7 @@ export const ordersWaiters: Record<Locale, Record<string, string>> = {
     'ordersWaiters.staff.archiving': 'A arquivar...',
     'ordersWaiters.staff.deleteAccount': 'Eliminar conta',
     'ordersWaiters.staff.loadingStaff': 'A carregar equipa...',
+    'ordersWaiters.staff.eyebrow': 'Equipa do restaurante',
     'ordersWaiters.staff.pageTitle': 'Equipa',
     'ordersWaiters.staff.pageDescription':
       'Crie contas de funcionários, escolha o seu portal, atribua empregados a mesas e faça a gestão do histórico de contas.',
@@ -452,6 +455,7 @@ export const ordersWaiters: Record<Locale, Record<string, string>> = {
     'ordersWaiters.staff.archiving': 'Wird archiviert...',
     'ordersWaiters.staff.deleteAccount': 'Konto löschen',
     'ordersWaiters.staff.loadingStaff': 'Personal wird geladen...',
+    'ordersWaiters.staff.eyebrow': 'Restaurantpersonal',
     'ordersWaiters.staff.pageTitle': 'Personal',
     'ordersWaiters.staff.pageDescription':
       'Erstelle Mitarbeiterkonten, wähle deren Portal, weise Kellnern Tische zu und verwalte den Kontoverlauf.',
@@ -584,6 +588,7 @@ export const ordersWaiters: Record<Locale, Record<string, string>> = {
     'ordersWaiters.staff.archiving': 'Archivage...',
     'ordersWaiters.staff.deleteAccount': 'Supprimer le compte',
     'ordersWaiters.staff.loadingStaff': 'Chargement du personnel...',
+    'ordersWaiters.staff.eyebrow': 'Personnel du restaurant',
     'ordersWaiters.staff.pageTitle': 'Personnel',
     'ordersWaiters.staff.pageDescription':
       "Créez des comptes du personnel, choisissez leur portail, attribuez des serveurs aux tables et gérez l'historique des comptes.",

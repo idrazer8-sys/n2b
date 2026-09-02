@@ -774,7 +774,7 @@ export default function WaitersPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-8">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-ink/40">
-            Test Restaurant
+            {t('ordersWaiters.staff.eyebrow')}
           </p>
 
           <h1 className="font-display text-3xl mt-1">
