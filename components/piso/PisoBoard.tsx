@@ -663,19 +663,24 @@ export default function PisoBoard({
                     }}
                   >
                     <div
-                      className="rounded-full flex items-center justify-center font-extrabold"
+                      className="rounded-full flex items-center justify-center font-extrabold px-1.5"
                       style={{
-                        width: 26,
-                        height: 26,
+                        minWidth: 22,
+                        height: 20,
+                        maxWidth: 'calc(100% - 8px)',
                         background: statusDotColor(status),
                         color: '#0e1013',
-                        fontSize: 12,
+                        fontSize: 10.5,
                         marginBottom: 4,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
                       }}
+                      title={table.label}
                     >
                       {table.label}
                     </div>
-                    <span className="text-[10px] text-[#aab1bd] px-1 text-center leading-tight">
+                    <span className="text-[10px] text-[#aab1bd] px-1 text-center leading-tight max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
                       {subtitle}
                     </span>
 
