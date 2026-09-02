@@ -4,15 +4,7 @@ import { db } from '@/src/lib/db';
 import { requireRestaurantAccess } from '@/src/lib/auth';
 import { publishOrderEvent } from '@/src/lib/order-events';
 import { errorResponse } from '@/src/lib/api-response';
-
-const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-  // NEW -> READY directly is the "straight to the waiter" shortcut for
-  // drinks-only orders, which need no kitchen preparation.
-  NEW: ['ACCEPTED', 'REJECTED', 'READY'],
-  ACCEPTED: ['PREPARING', 'CANCELLED'],
-  PREPARING: ['READY', 'CANCELLED'],
-  READY: ['COMPLETED'],
-};
+import { ALLOWED_TRANSITIONS } from '@/src/lib/order-state-machine';
 
 const schema = z.object({
   status: z.enum([
