@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatCents } from '@/src/lib/format';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -96,6 +96,13 @@ export default function CustomerMenu({
   const [cartOpen, setCartOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // A ref, not just the `submitting` state — two rapid taps (very real on
+  // mobile) can both fire submitOrder() in the same tick, before React has
+  // re-rendered the button as disabled or this closure has seen the state
+  // update. The ref is mutated synchronously, so the second call sees it
+  // immediately regardless of render timing, and can't place a duplicate
+  // order for the same cart.
+  const submittingRef = useRef(false);
   const [dessertMode, setDessertMode] = useState(dessertOnly);
   const [partySize, setPartySize] = useState<number | null>(null);
   const [partySizeDraft, setPartySizeDraft] = useState(2);
@@ -181,8 +188,9 @@ export default function CustomerMenu({
   }
 
   async function submitOrder() {
-    if (!data || cart.length === 0) return;
+    if (!data || cart.length === 0 || submittingRef.current) return;
 
+    submittingRef.current = true;
     setSubmitting(true);
     setSubmitError(null);
 
@@ -216,6 +224,7 @@ export default function CustomerMenu({
       setSubmitError(
         err instanceof Error ? err.message : t('common.somethingWentWrong')
       );
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }

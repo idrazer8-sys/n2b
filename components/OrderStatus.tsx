@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatCents } from '@/src/lib/format';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -150,6 +150,12 @@ export default function OrderStatus({
 
   const [finishing, setFinishing] =
     useState(false);
+
+  // Synchronous re-entry guard — see the matching one in CustomerMenu.tsx.
+  // Two fast taps on "pay" could otherwise both reach fetch() before
+  // React re-renders the button as disabled, creating two competing
+  // checkout attempts for the same bill.
+  const finishingRef = useRef(false);
 
   const [lastUpdated, setLastUpdated] =
     useState<Date | null>(null);
@@ -348,7 +354,7 @@ export default function OrderStatus({
   }
 
   async function finishMeal() {
-    if (!order) return;
+    if (!order || finishingRef.current) return;
 
     if (
       paymentChoice ===
@@ -416,6 +422,7 @@ export default function OrderStatus({
     }
 
     try {
+      finishingRef.current = true;
       setFinishing(true);
       setError(null);
 
@@ -474,6 +481,7 @@ export default function OrderStatus({
 
         await loadOrder();
 
+        finishingRef.current = false;
         setFinishing(false);
         return;
       }
@@ -493,6 +501,7 @@ export default function OrderStatus({
           : t('customerFlow.order.couldNotStartPayment')
       );
 
+      finishingRef.current = false;
       setFinishing(false);
     }
   }
