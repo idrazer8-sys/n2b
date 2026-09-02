@@ -1,6 +1,39 @@
 import { db } from '@/src/lib/db';
 
 /**
+ * Whether booking `tableId` at `startsAt` would sit too close to another
+ * CONFIRMED reservation already on that table. There's no `endsAt` on a
+ * Reservation (seating duration varies too much to model), so "too close"
+ * reuses the restaurant's own `reservationBufferMinutes` — the same number
+ * that already governs how long before a booking the table stops taking
+ * walk-in QR orders — as the minimum spacing required between two bookings
+ * on the same table. Pass `excludeReservationId` when checking an edit to a
+ * reservation against itself.
+ */
+export async function findConflictingReservation(
+  restaurantId: string,
+  tableId: string,
+  startsAt: Date,
+  bufferMinutes: number,
+  excludeReservationId?: string
+): Promise<{ id: string; startsAt: Date } | null> {
+  const effectiveBuffer = bufferMinutes > 0 ? bufferMinutes : 1;
+  const windowStart = new Date(startsAt.getTime() - effectiveBuffer * 60000);
+  const windowEnd = new Date(startsAt.getTime() + effectiveBuffer * 60000);
+
+  return db.reservation.findFirst({
+    where: {
+      restaurantId,
+      tableId,
+      status: 'CONFIRMED',
+      startsAt: { gte: windowStart, lte: windowEnd },
+      ...(excludeReservationId ? { id: { not: excludeReservationId } } : {}),
+    },
+    select: { id: true, startsAt: true },
+  });
+}
+
+/**
  * Whether `tableId` cannot currently be scanned for ordering because a
  * confirmed reservation is starting within `bufferMinutes`.
  *

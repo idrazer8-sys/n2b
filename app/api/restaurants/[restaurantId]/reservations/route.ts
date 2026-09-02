@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/src/lib/db';
 import { requireRestaurantAccess } from '@/src/lib/auth';
+import { findConflictingReservation } from '@/src/lib/reservations';
 
 const createSchema = z.object({
   tableId: z.string().min(1),
@@ -81,6 +82,28 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
     if (Number.isNaN(startsAt.getTime())) {
       return NextResponse.json({ error: 'Invalid date/time' }, { status: 400 });
+    }
+
+    const restaurant = await db.restaurant.findUnique({
+      where: { id: params.restaurantId },
+      select: { reservationBufferMinutes: true },
+    });
+
+    const conflict = await findConflictingReservation(
+      params.restaurantId,
+      body.tableId,
+      startsAt,
+      restaurant?.reservationBufferMinutes ?? 15
+    );
+
+    if (conflict) {
+      return NextResponse.json(
+        {
+          error: 'This table already has a reservation too close to that time',
+          conflictingReservationId: conflict.id,
+        },
+        { status: 409 }
+      );
     }
 
     const reservation = await db.reservation.create({

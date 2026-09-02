@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/src/lib/db';
 import { requireRestaurantAccess } from '@/src/lib/auth';
+import { findConflictingReservation } from '@/src/lib/reservations';
 
 const patchSchema = z.object({
   tableId: z.string().min(1).optional(),
@@ -53,6 +54,34 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
       if (Number.isNaN(startsAt.getTime())) {
         return NextResponse.json({ error: 'Invalid date/time' }, { status: 400 });
+      }
+    }
+
+    // Only re-check for a conflict when the table or time is actually
+    // moving — editing just the party size or notes shouldn't re-validate
+    // against itself.
+    if (body.tableId !== undefined || startsAt !== undefined) {
+      const restaurant = await db.restaurant.findUnique({
+        where: { id: params.restaurantId },
+        select: { reservationBufferMinutes: true },
+      });
+
+      const conflict = await findConflictingReservation(
+        params.restaurantId,
+        body.tableId ?? existing.tableId,
+        startsAt ?? existing.startsAt,
+        restaurant?.reservationBufferMinutes ?? 15,
+        params.reservationId
+      );
+
+      if (conflict) {
+        return NextResponse.json(
+          {
+            error: 'This table already has a reservation too close to that time',
+            conflictingReservationId: conflict.id,
+          },
+          { status: 409 }
+        );
       }
     }
 
