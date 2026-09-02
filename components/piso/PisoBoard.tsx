@@ -277,6 +277,23 @@ export default function PisoBoard({
     orig: { x: number; y: number; width: number; height: number };
   } | null>(null);
 
+  // handlePointerUp is wired up once per drag via a raw window listener
+  // (not a React prop), so it can't pick up a fresh persistDragResult on
+  // every render the way a normal callback prop would. Reading the latest
+  // tables/zones through refs — instead of closing over the state
+  // variables directly — is what lets a single, stable save function
+  // always see the position the drag actually ended at.
+  const tablesRef = useRef(tables);
+  const zonesRef = useRef(zones);
+
+  useEffect(() => {
+    tablesRef.current = tables;
+  }, [tables]);
+
+  useEffect(() => {
+    zonesRef.current = zones;
+  }, [zones]);
+
   const statusByTableId = useMemo(() => {
     const map = new Map<string, StatusRow>();
     for (const row of statuses) map.set(row.table.id, row);
@@ -496,7 +513,7 @@ export default function PisoBoard({
   const persistDragResult = useCallback(
     async (kind: 'table' | 'zone', id: string) => {
       if (kind === 'table') {
-        const table = tables.find((row) => row.id === id);
+        const table = tablesRef.current.find((row) => row.id === id);
         if (!table) return;
         await fetch(`/api/restaurants/${restaurantId}/tables/${id}`, {
           method: 'PATCH',
@@ -510,7 +527,7 @@ export default function PisoBoard({
           }),
         }).catch(() => {});
       } else {
-        const zone = zones.find((row) => row.id === id);
+        const zone = zonesRef.current.find((row) => row.id === id);
         if (!zone) return;
         await fetch(`/api/restaurants/${restaurantId}/table-zones/${id}`, {
           method: 'PATCH',
@@ -525,7 +542,7 @@ export default function PisoBoard({
         }).catch(() => {});
       }
     },
-    [restaurantId, tables, zones]
+    [restaurantId]
   );
 
   const handlePointerUp = useCallback(() => {
@@ -535,8 +552,7 @@ export default function PisoBoard({
     window.removeEventListener('pointermove', handlePointerMove);
     window.removeEventListener('pointerup', handlePointerUp);
     if (d) void persistDragResult(d.kind, d.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handlePointerMove]);
+  }, [handlePointerMove, persistDragResult]);
 
   function startDrag(
     e: React.PointerEvent,
