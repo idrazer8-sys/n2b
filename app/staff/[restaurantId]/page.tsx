@@ -758,15 +758,11 @@ export default function StaffOrdersPage() {
       async (
         silent = false
       ) => {
-        try {
-          if (!silent) {
-            setError(null);
-          }
+        if (silent) {
+          setRefreshing(true);
+        }
 
-          if (silent) {
-            setRefreshing(true);
-          }
-
+        const attempt = async () => {
           const [
             restaurantsRes,
             meRes,
@@ -853,10 +849,9 @@ export default function StaffOrdersPage() {
               401 ||
             meRes.status === 401
           ) {
-            router.push(
-              '/'
+            throw new Error(
+              '__UNAUTHORIZED__'
             );
-            return;
           }
 
           if (
@@ -1001,13 +996,44 @@ export default function StaffOrdersPage() {
               ? tableStatusJson.tables
               : []
           );
+        };
+
+        try {
+          await attempt();
+          setError(null);
         } catch (err) {
-          if (!silent) {
-            setError(
-              err instanceof Error
-                ? err.message
-                : t('staffPortal.errors.loadDashboard')
-            );
+          // A transient auth/connection hiccup right after a fresh
+          // session (or under a burst of concurrent requests) can fail
+          // once and succeed immediately after — one quick retry avoids
+          // bouncing the waiter to the marketing homepage, or flashing
+          // an error, for something that fixes itself right away.
+          let finalErr: unknown = err;
+
+          try {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await attempt();
+            setError(null);
+            finalErr = null;
+          } catch (retryErr) {
+            finalErr = retryErr;
+          }
+
+          if (finalErr) {
+            if (
+              finalErr instanceof Error &&
+              finalErr.message === '__UNAUTHORIZED__'
+            ) {
+              router.push('/');
+              return;
+            }
+
+            if (!silent) {
+              setError(
+                finalErr instanceof Error
+                  ? finalErr.message
+                  : t('staffPortal.errors.loadDashboard')
+              );
+            }
           }
         } finally {
           setLoading(false);
