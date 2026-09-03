@@ -6,10 +6,13 @@ import { errorResponse } from '@/src/lib/api-response';
 
 const schema = z.object({
   name: z.string().min(1).max(60),
+  kind: z.enum(['ZONE', 'BAR', 'KITCHEN', 'ENTRANCE']).optional(),
   x: z.number().int().min(0).max(4000).optional(),
   y: z.number().int().min(0).max(4000).optional(),
-  width: z.number().int().min(80).max(2000).optional(),
-  height: z.number().int().min(80).max(2000).optional(),
+  // Fixtures like a bar are often long and thin, so they need a smaller
+  // floor than a table-grouping zone does.
+  width: z.number().int().min(40).max(2000).optional(),
+  height: z.number().int().min(40).max(2000).optional(),
 });
 
 export async function GET(

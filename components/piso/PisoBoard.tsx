@@ -13,9 +13,12 @@ import {
 
 type Shape = 'SQUARE' | 'RECT' | 'CIRCLE';
 
+type ZoneKind = 'ZONE' | 'BAR' | 'KITCHEN' | 'ENTRANCE';
+
 type ZoneRow = {
   id: string;
   name: string;
+  kind: ZoneKind;
   x: number;
   y: number;
   width: number;
@@ -230,56 +233,75 @@ function TableChairs({
   );
 }
 
-function RoomDecor({ t }: { t: Translate }) {
+// What each kind of box looks like on the floor. Bar/kitchen/entrance used
+// to be fixed decoration drawn identically for every restaurant; they're
+// now real rows the manager places (and only if the restaurant has them),
+// so this just styles whatever they've actually put on their plan.
+function ZoneContents({ zone }: { zone: ZoneRow }) {
   const label: React.CSSProperties = {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 600,
-    color: '#6b7280',
+    color: '#7a8291',
     letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-  };
-  const fixture: React.CSSProperties = {
-    position: 'absolute',
-    borderRadius: 12,
-    border: '1px dashed #2a2f38',
-    background: 'rgba(255,255,255,0.02)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    pointerEvents: 'none',
   };
 
-  return (
-    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-      {/* Bar counter */}
-      <div style={{ ...fixture, left: 620, top: 16, width: 200, height: 56 }}>
-        <span style={label}>Bar</span>
+  if (zone.kind === 'BAR') {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 pointer-events-none">
+        <span style={label}>{zone.name}</span>
         <div style={{ display: 'flex', gap: 6 }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#3a3f4a' }} />
-          ))}
+          {Array.from({ length: Math.max(2, Math.min(10, Math.round(zone.width / 34))) }).map(
+            (_, i) => (
+              <div
+                key={i}
+                style={{ width: 8, height: 8, borderRadius: '50%', background: '#3a3f4a' }}
+              />
+            )
+          )}
         </div>
       </div>
+    );
+  }
 
-      {/* Kitchen */}
-      <div style={{ ...fixture, left: 840, top: 16, width: 220, height: 100 }}>
-        <UtensilsIcon size={22} />
-        <span style={label}>{t('floorPlan.decor.kitchen')}</span>
+  if (zone.kind === 'KITCHEN') {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 pointer-events-none text-[#7a8291]">
+        <UtensilsIcon size={20} />
+        <span style={label}>{zone.name}</span>
       </div>
+    );
+  }
 
-      {/* Entrance */}
-      <div style={{ ...fixture, left: 920, top: 520, width: 150, height: 70, border: 'none' }}>
-        <span style={{ fontSize: 20, color: '#5b6472' }}>↑</span>
-        <span style={label}>{t('floorPlan.decor.entrance')}</span>
+  if (zone.kind === 'ENTRANCE') {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">
+        <span style={{ fontSize: 18, color: '#5b6472' }}>↑</span>
+        <span style={label}>{zone.name}</span>
       </div>
+    );
+  }
 
-      {/* Decorative plants */}
-      <div style={{ position: 'absolute', left: 630, top: 540, fontSize: 22 }}>🌿</div>
-      <div style={{ position: 'absolute', left: 1060, top: 16, fontSize: 22 }}>🌿</div>
-    </div>
+  return (
+    <span className="absolute top-2 left-3 text-[12px] font-semibold text-[#7a8291]">
+      {zone.name}
+    </span>
   );
+}
+
+function zoneStyle(kind: ZoneKind, isSelected: boolean): React.CSSProperties {
+  if (isSelected) {
+    return { background: '#1c2028', border: '2px solid #d97a3d' };
+  }
+  switch (kind) {
+    case 'BAR':
+      return { background: '#20242d', border: '1px solid #39404c' };
+    case 'KITCHEN':
+      return { background: '#1b1f27', border: '1px dashed #39404c' };
+    case 'ENTRANCE':
+      return { background: 'transparent', border: '1px dashed #2f3540' };
+    default:
+      return { background: '#1c2028', border: '1px dashed #333a45' };
+  }
 }
 
 export default function PisoBoard({
@@ -729,18 +751,27 @@ export default function PisoBoard({
     }
   }
 
-  async function addZone() {
+  async function addZone(kind: ZoneKind = 'ZONE') {
     setSaving(true);
     try {
+      const preset =
+        kind === 'BAR'
+          ? { name: t('floorPlan.fixture.bar'), width: 240, height: 60 }
+          : kind === 'KITCHEN'
+            ? { name: t('floorPlan.decor.kitchen'), width: 200, height: 110 }
+            : kind === 'ENTRANCE'
+              ? { name: t('floorPlan.decor.entrance'), width: 140, height: 70 }
+              : { name: t('floorPlan.editPanel.zone'), ...DEFAULT_ZONE_SIZE };
+
       const res = await fetch(`/api/restaurants/${restaurantId}/table-zones`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: t('floorPlan.editPanel.zone'),
+          kind,
           x: 40,
           y: 40,
-          ...DEFAULT_ZONE_SIZE,
+          ...preset,
         }),
       });
       const json = await res.json().catch(() => null);
@@ -832,7 +863,10 @@ export default function PisoBoard({
           {editable && (
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <ToolButton icon={PlusIcon} label={t('floorPlan.toolbar.addTable')} onClick={() => void addTable()} disabled={saving} />
-              <ToolButton icon={PlusIcon} label={t('floorPlan.toolbar.addZone')} onClick={() => void addZone()} disabled={saving} />
+              <ToolButton icon={PlusIcon} label={t('floorPlan.toolbar.addZone')} onClick={() => void addZone('ZONE')} disabled={saving} />
+              <ToolButton icon={PlusIcon} label={t('floorPlan.toolbar.addBar')} onClick={() => void addZone('BAR')} disabled={saving} />
+              <ToolButton icon={PlusIcon} label={t('floorPlan.toolbar.addKitchen')} onClick={() => void addZone('KITCHEN')} disabled={saving} />
+              <ToolButton icon={PlusIcon} label={t('floorPlan.toolbar.addEntrance')} onClick={() => void addZone('ENTRANCE')} disabled={saving} />
               <ToolButton
                 icon={TrashIcon}
                 label={t('floorPlan.toolbar.delete')}
@@ -855,8 +889,6 @@ export default function PisoBoard({
             style={{ width: '100%', maxWidth: 1104, height: 620 }}
           >
             <div className="relative" style={{ width: 1104, height: 620 }}>
-              <RoomDecor t={t} />
-
               {zones.length === 0 && tables.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm text-[#5b6472]">
                   {editable
@@ -877,14 +909,11 @@ export default function PisoBoard({
                       top: zone.y,
                       width: zone.width,
                       height: zone.height,
-                      background: '#1c2028',
-                      border: isSel ? '2px solid #d97a3d' : '1px dashed #333a45',
+                      ...zoneStyle(zone.kind, isSel),
                       cursor: editable ? 'move' : 'default',
                     }}
                   >
-                    <span className="absolute top-2 left-3 text-[12px] font-semibold text-[#7a8291]">
-                      {zone.name}
-                    </span>
+                    <ZoneContents zone={zone} />
                     {editable && isSel && (
                       <div
                         onPointerDown={(e) => {
@@ -1156,6 +1185,57 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+// Exact dimensions, for when dragging the corner handle isn't precise
+// enough to get the plan square and proportional.
+function SizeFields({
+  t,
+  width,
+  height,
+  min,
+  onChange,
+}: {
+  t: Translate;
+  width: number;
+  height: number;
+  min: number;
+  onChange: (patch: { width?: number; height?: number }) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2 mb-3">
+      <div>
+        <div className="text-[11px] text-[#7a8291] mb-1 font-semibold">
+          {t('floorPlan.editPanel.width')}
+        </div>
+        <input
+          type="number"
+          min={min}
+          value={width}
+          onChange={(e) => {
+            const next = Math.round(Number(e.target.value));
+            if (Number.isFinite(next) && next >= min) onChange({ width: next });
+          }}
+          className={fieldInputClass()}
+        />
+      </div>
+      <div>
+        <div className="text-[11px] text-[#7a8291] mb-1 font-semibold">
+          {t('floorPlan.editPanel.height')}
+        </div>
+        <input
+          type="number"
+          min={min}
+          value={height}
+          onChange={(e) => {
+            const next = Math.round(Number(e.target.value));
+            if (Number.isFinite(next) && next >= min) onChange({ height: next });
+          }}
+          className={fieldInputClass()}
+        />
+      </div>
+    </div>
+  );
+}
+
 function EditPanel({
   t,
   restaurantId,
@@ -1203,6 +1283,14 @@ function EditPanel({
             />
           </Field>
 
+          <SizeFields
+            t={t}
+            width={table.width ?? DEFAULT_TABLE_SIZE}
+            height={table.height ?? DEFAULT_TABLE_SIZE}
+            min={30}
+            onChange={onUpdateTable}
+          />
+
           <Field label={t('floorPlan.editPanel.shape')}>
             <select
               value={table.shape}
@@ -1237,14 +1325,37 @@ function EditPanel({
       )}
 
       {zone && (
-        <Field label={t('floorPlan.editPanel.zoneName')}>
-          <input
-            type="text"
-            value={zone.name}
-            onChange={(e) => onUpdateZone({ name: e.target.value })}
-            className={fieldInputClass()}
+        <>
+          <Field label={t('floorPlan.editPanel.zoneName')}>
+            <input
+              type="text"
+              value={zone.name}
+              onChange={(e) => onUpdateZone({ name: e.target.value })}
+              className={fieldInputClass()}
+            />
+          </Field>
+
+          <Field label={t('floorPlan.editPanel.zoneKind')}>
+            <select
+              value={zone.kind}
+              onChange={(e) => onUpdateZone({ kind: e.target.value as ZoneKind })}
+              className={fieldInputClass()}
+            >
+              <option value="ZONE">{t('floorPlan.editPanel.zone')}</option>
+              <option value="BAR">{t('floorPlan.fixture.bar')}</option>
+              <option value="KITCHEN">{t('floorPlan.decor.kitchen')}</option>
+              <option value="ENTRANCE">{t('floorPlan.decor.entrance')}</option>
+            </select>
+          </Field>
+
+          <SizeFields
+            t={t}
+            width={zone.width}
+            height={zone.height}
+            min={40}
+            onChange={onUpdateZone}
           />
-        </Field>
+        </>
       )}
 
       <button

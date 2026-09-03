@@ -638,6 +638,11 @@ model TableZone {
   id           String     @id @default(cuid())
   restaurantId String
   name         String
+  // What this box actually is on the floor. A ZONE groups tables (the
+  // original meaning); BAR/KITCHEN/ENTRANCE are fixtures the manager
+  // places only if the restaurant really has them — they used to be
+  // hardcoded decoration drawn identically for every restaurant.
+  kind         TableZoneKind @default(ZONE)
   x            Int        @default(0)
   y            Int        @default(0)
   width        Int        @default(260)
@@ -647,6 +652,13 @@ model TableZone {
   tables       Table[]
 
   @@index([restaurantId])
+}
+
+enum TableZoneKind {
+  ZONE
+  BAR
+  KITCHEN
+  ENTRANCE
 }
 
 enum TableShape {
