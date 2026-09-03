@@ -103,6 +103,14 @@ export async function GET(
                   totalCents: true,
                   paidAt: true,
                   staffId: true,
+                  items: {
+                    select: {
+                      id: true,
+                      nameSnapshot: true,
+                      quantity: true,
+                      status: true,
+                    },
+                  },
                 },
               },
             },

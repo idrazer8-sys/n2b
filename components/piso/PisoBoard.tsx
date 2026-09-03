@@ -117,9 +117,9 @@ function floorBucket(status: StatusRow['status'], hasReservationSoon: boolean): 
 // pipeline. READY splits into two buckets depending on whether a waiter
 // has claimed it yet (via the claim endpoint) — "ready" (in the pass,
 // nobody's picked it up) vs "serving" (claimed, on its way to the table).
-type KitchenBucket = 'available' | 'ordering' | 'preparing' | 'ready' | 'serving';
+export type KitchenBucket = 'available' | 'ordering' | 'preparing' | 'ready' | 'serving';
 
-const KITCHEN_BUCKET_COLOR: Record<KitchenBucket, string> = {
+export const KITCHEN_BUCKET_COLOR: Record<KitchenBucket, string> = {
   available: '#5b6472',
   ordering: '#5B3DFF',
   preparing: '#e0a83a',
@@ -287,11 +287,27 @@ export default function PisoBoard({
   editable,
   scopeToMine,
   lens = 'payment',
+  highlightBucket = 'all',
+  showSidePanel = true,
+  onSelectTable,
 }: {
   restaurantId: string;
   editable: boolean;
   scopeToMine: boolean;
   lens?: 'payment' | 'kitchen';
+  // Only meaningful when lens="kitchen" — dims every table whose current
+  // bucket doesn't match, so a caller can drive this from filter pills
+  // without needing its own copy of the floor-plan rendering.
+  highlightBucket?: KitchenBucket | 'all';
+  // A caller that renders its own detail panel (e.g. the waiter home page)
+  // sets this false so PisoBoard only draws the canvas — no built-in
+  // legend/detail column competing with its own right column.
+  showSidePanel?: boolean;
+  // Fired alongside the internal selection state in the non-editable path,
+  // so a parent can react to a table click without duplicating PisoBoard's
+  // own fetch/state — it looks the table up in data it's already loading
+  // for its own purposes.
+  onSelectTable?: (tableId: string | null) => void;
 }) {
   const { t } = useI18n();
 
@@ -638,7 +654,14 @@ export default function PisoBoard({
     action: 'move' | 'resize'
   ) {
     if (!editable) {
-      if (kind === 'table') setSelected({ kind: 'table', id });
+      if (kind === 'table') {
+        // Without this, the click bubbles to the canvas container's own
+        // onPointerDown (which deselects on background click) and
+        // immediately clears the selection this same click just made.
+        e.stopPropagation();
+        setSelected({ kind: 'table', id });
+        onSelectTable?.(id);
+      }
       return;
     }
 
@@ -824,7 +847,10 @@ export default function PisoBoard({
           )}
 
           <div
-            onPointerDown={() => setSelected(null)}
+            onPointerDown={() => {
+              setSelected(null);
+              if (!editable) onSelectTable?.(null);
+            }}
             className="relative rounded-xl border border-[#23272f] bg-[#181b22] overflow-auto"
             style={{ width: '100%', maxWidth: 1104, height: 620 }}
           >
@@ -893,6 +919,8 @@ export default function PisoBoard({
                 const kBucket = kitchenBucket(row?.orders ?? []);
                 const ringColor =
                   lens === 'kitchen' ? KITCHEN_BUCKET_COLOR[kBucket] : BUCKET_COLOR[bucket];
+                const filteredOut =
+                  lens === 'kitchen' && highlightBucket !== 'all' && kBucket !== highlightBucket;
 
                 let subtitle: string;
                 if (dimmed) subtitle = t('floorPlan.status.notMine');
@@ -913,7 +941,7 @@ export default function PisoBoard({
                       top: table.y ?? 0,
                       width,
                       height,
-                      opacity: dimmed ? 0.45 : 1,
+                      opacity: dimmed ? 0.45 : filteredOut ? 0.3 : 1,
                       cursor: editable ? 'move' : dimmed ? 'default' : 'pointer',
                     }}
                   >
@@ -971,6 +999,7 @@ export default function PisoBoard({
         </div>
 
         {/* right panel */}
+        {showSidePanel && (
         <div className="w-80 shrink-0 border-l border-[#23272f] p-4 bg-[#161920]">
           {lens === 'kitchen' ? (
             <div className="grid grid-cols-2 gap-2 mb-5">
@@ -1062,6 +1091,7 @@ export default function PisoBoard({
             </>
           )}
         </div>
+        )}
       </div>
     </div>
   );
