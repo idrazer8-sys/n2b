@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import N2BLogo from '@/components/branding/N2BLogo';
+import PisoBoard from '@/components/piso/PisoBoard';
 
 type Table = {
   id: string;
@@ -109,6 +110,7 @@ export default function StaffTablesPage() {
   const [statuses, setStatuses] = useState<TableStatus[]>([]);
   const [currency, setCurrency] = useState('EUR');
   const [selectedTableId, setSelectedTableId] = useState('');
+  const [view, setView] = useState<'list' | 'floorplan'>('list');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -379,15 +381,45 @@ export default function StaffTablesPage() {
       </section>
 
       <section>
-        <div className="mb-4">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-ink/40">
-            {t('staffMisc.tables.liveStatusEyebrow')}
-          </p>
-          <h2 className="font-display text-3xl mt-1">
-            {t('staffMisc.tables.floorOverview')}
-          </h2>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-ink/40">
+              {t('staffMisc.tables.liveStatusEyebrow')}
+            </p>
+            <h2 className="font-display text-3xl mt-1">
+              {t('staffMisc.tables.floorOverview')}
+            </h2>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setView('list')}
+              className={`px-3 py-2 text-xs border rounded-lg transition ${
+                view === 'list'
+                  ? 'border-ink bg-ink text-paper'
+                  : 'border-line text-ink/60 hover:text-ink'
+              }`}
+            >
+              {t('staffMisc.tables.viewList')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('floorplan')}
+              className={`px-3 py-2 text-xs border rounded-lg transition ${
+                view === 'floorplan'
+                  ? 'border-ink bg-ink text-paper'
+                  : 'border-line text-ink/60 hover:text-ink'
+              }`}
+            >
+              {t('staffMisc.tables.viewFloorPlan')}
+            </button>
+          </div>
         </div>
 
+        {view === 'floorplan' ? (
+          <PisoBoard restaurantId={restaurantId} editable={false} scopeToMine lens="kitchen" />
+        ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {statuses.map((item) => (
             <article
@@ -493,8 +525,9 @@ export default function StaffTablesPage() {
             </article>
           ))}
         </div>
+        )}
 
-        {statuses.length === 0 && (
+        {view === 'list' && statuses.length === 0 && (
           <div className="border border-line rounded-xl px-6 py-12 text-center text-sm text-ink/50">
             {t('staffMisc.tables.noTablesAssigned')}
           </div>

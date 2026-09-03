@@ -102,6 +102,7 @@ export async function GET(
                   status: true,
                   totalCents: true,
                   paidAt: true,
+                  staffId: true,
                 },
               },
             },

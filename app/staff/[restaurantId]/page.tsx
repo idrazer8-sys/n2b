@@ -16,6 +16,7 @@ import {
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import N2BLogo from '@/components/branding/N2BLogo';
+import NotificationFeed, { type FeedEvent } from '@/components/staff/NotificationFeed';
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -691,14 +692,27 @@ export default function StaffOrdersPage() {
   ] = useState(false);
 
   const [
-    readyNotice,
-    setReadyNotice,
-  ] =
-    useState<StaffOrder | null>(
-      null
-    );
+    eventFeed,
+    setEventFeed,
+  ] = useState<FeedEvent[]>([]);
 
   const { t } = useI18n();
+
+  const pushFeedEvent = useCallback(
+    (message: string) => {
+      setEventFeed((prev) =>
+        [
+          {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            message,
+            time: new Date().toISOString(),
+          },
+          ...prev,
+        ].slice(0, 30)
+      );
+    },
+    []
+  );
 
   const enableSound =
     useCallback(
@@ -1096,75 +1110,83 @@ export default function StaffOrdersPage() {
             event.data
           );
 
-        if (
-          payload.type ===
-            'ORDER_READY' ||
-          payload.type ===
-            'ORDER_CLAIMED' ||
-          payload.type ===
-            'ORDER_STATUS_CHANGED' ||
-          payload.type ===
-            'ORDER_PAID'
-        ) {
-          await loadData(true);
-        }
+        const relevant =
+          payload.type === 'ORDER_READY' ||
+          payload.type === 'ORDER_CLAIMED' ||
+          payload.type === 'ORDER_STATUS_CHANGED' ||
+          payload.type === 'ORDER_PAID';
+
+        if (!relevant) return;
+
+        await loadData(true);
+
+        // Looked up fresh (rather than read back off `orders` state,
+        // which won't have re-rendered yet) so the feed message always
+        // reflects the order this exact event was about.
+        const response =
+          await fetch(
+            `/api/restaurants/${restaurantId}/orders`,
+            {
+              credentials: 'include',
+              cache: 'no-store',
+            }
+          );
+
+        if (!response.ok) return;
+
+        const nextOrders =
+          normalizeOrders(
+            await response.json(),
+            t
+          );
+
+        const order =
+          nextOrders.find(
+            (item) => item.id === payload.orderId
+          );
+
+        if (!order) return;
+
+        const tableLabel =
+          order.table?.label ??
+          t('staffPortal.common.tableFallback');
 
         if (
-          payload.type ===
-          'ORDER_READY'
+          payload.type === 'ORDER_READY' &&
+          order.status === 'READY'
         ) {
-          const response =
-            await fetch(
-              `/api/restaurants/${restaurantId}/orders`,
-              {
-                credentials:
-                  'include',
-                cache:
-                  'no-store',
-              }
-            );
-
-          if (!response.ok) {
-            return;
-          }
-
-          const nextOrders =
-            normalizeOrders(
-              await response.json(),
-              t
-            );
-
-          const readyOrder =
-            nextOrders.find(
-              (order) =>
-                order.id ===
-                payload.orderId
-            );
-
-          if (
-            readyOrder &&
-            readyOrder.status ===
-              'READY'
-          ) {
-            setReadyNotice(
-              readyOrder
-            );
-
-            chime();
-
-            window.setTimeout(
-              () => {
-                setReadyNotice(
-                  (current) =>
-                    current?.id ===
-                    readyOrder.id
-                      ? null
-                      : current
-                );
-              },
-              8000
-            );
-          }
+          pushFeedEvent(
+            t('staffPortal.notifications.orderReady', {
+              table: tableLabel,
+              number: order.orderNumber,
+            })
+          );
+          chime();
+        } else if (payload.type === 'ORDER_CLAIMED') {
+          pushFeedEvent(
+            t('staffPortal.notifications.orderClaimed', {
+              table: tableLabel,
+              number: order.orderNumber,
+              staff:
+                order.RestaurantStaff?.user?.name ??
+                t('staffPortal.header.waiterFallback'),
+            })
+          );
+        } else if (payload.type === 'ORDER_STATUS_CHANGED') {
+          pushFeedEvent(
+            t('staffPortal.notifications.orderStatusChanged', {
+              table: tableLabel,
+              number: order.orderNumber,
+              status: statusLabel(order.status, t),
+            })
+          );
+        } else if (payload.type === 'ORDER_PAID') {
+          pushFeedEvent(
+            t('staffPortal.notifications.orderPaid', {
+              table: tableLabel,
+              number: order.orderNumber,
+            })
+          );
         }
       } catch {
         // Ignore malformed events.
@@ -1182,6 +1204,7 @@ export default function StaffOrdersPage() {
   }, [
     chime,
     loadData,
+    pushFeedEvent,
     restaurantId,
     t,
   ]);
@@ -1284,14 +1307,6 @@ export default function StaffOrdersPage() {
       }
 
       await loadData(true);
-
-      setReadyNotice(
-        (current) =>
-          current?.id ===
-          order.id
-            ? null
-            : current
-      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -1866,61 +1881,15 @@ export default function StaffOrdersPage() {
 
   return (
     <main className="theme-n2b min-h-screen bg-[#F5F6FA] text-[#1A134D]">
-      {readyNotice && (
-        <div className="fixed top-4 left-4 right-4 z-50 mx-auto max-w-md">
-          <div className="bg-[#477052] text-[#F5F6FA] p-5 shadow-xl rounded-xl">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-white/60">
-              {t('staffPortal.readyNotice.eyebrow')}
-            </p>
-
-            <h2 className="font-display text-3xl mt-1">
-              {readyNotice.table?.label ??
-                t('staffPortal.common.tableFallback')}
-            </h2>
-
-            <p className="text-sm mt-1 text-white/85">
-              {t('staffPortal.readyNotice.orderReady', {
-                number: readyNotice.orderNumber,
-              })}
-            </p>
-
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  void claimOrder(
-                    readyNotice
-                  )
-                }
-                disabled={
-                  readyNotice.staffId !==
-                    null &&
-                  readyNotice.staffId !==
-                    myStaffId
-                }
-                className="flex-1 bg-white text-[#1A134D] rounded-lg px-4 py-3 text-xs uppercase tracking-[0.08em] disabled:opacity-40"
-              >
-                {readyNotice.staffId ===
-                myStaffId
-                  ? t('staffPortal.readyNotice.mine')
-                  : t('staffPortal.actions.takeOrder')}
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setReadyNotice(
-                    null
-                  )
-                }
-                className="border border-white/20 rounded-lg px-4 py-3 text-xs"
-              >
-                {t('common.close')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <NotificationFeed
+        events={eventFeed}
+        soundEnabled={soundEnabled}
+        onToggleSound={() =>
+          soundEnabled
+            ? setSoundEnabled(false)
+            : void enableSound()
+        }
+      />
 
       <header className="sticky top-0 z-30 border-b border-[#1A134D]/10 bg-[#F5F6FA]/95 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 py-4">
@@ -2025,18 +1994,6 @@ export default function StaffOrdersPage() {
             </span>
 
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  void enableSound()
-                }
-                className="border border-[#1A134D]/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.08em]"
-              >
-                {soundEnabled
-                  ? t('staffPortal.header.soundOn')
-                  : t('staffPortal.header.enableSound')}
-              </button>
-
               <span className="flex items-center gap-2">
                 <span
                   className={`h-2 w-2 rounded-full ${

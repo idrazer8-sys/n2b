@@ -49,6 +49,7 @@ type OrderRow = {
     | 'CANCELLED'
     | 'PAYMENT_FAILED';
   totalCents: number;
+  staffId?: string | null;
 };
 
 type StatusRow = {
@@ -109,6 +110,41 @@ function floorBucket(status: StatusRow['status'], hasReservationSoon: boolean): 
   if (status === 'OPEN' || status === 'OCCUPIED' || status === 'PAID') return 'occupied';
   if (hasReservationSoon) return 'reserved';
   return 'free';
+}
+
+// Second lens on the same board: instead of payment/session state, color
+// each table by where its most recent active order sits in the kitchen
+// pipeline. READY splits into two buckets depending on whether a waiter
+// has claimed it yet (via the claim endpoint) — "ready" (in the pass,
+// nobody's picked it up) vs "serving" (claimed, on its way to the table).
+type KitchenBucket = 'available' | 'ordering' | 'preparing' | 'ready' | 'serving';
+
+const KITCHEN_BUCKET_COLOR: Record<KitchenBucket, string> = {
+  available: '#5b6472',
+  ordering: '#5B3DFF',
+  preparing: '#e0a83a',
+  ready: '#ef5a6f',
+  serving: '#35c88a',
+};
+
+export function kitchenBucket(orders: OrderRow[]): KitchenBucket {
+  if (orders.length === 0) return 'available';
+
+  const latest = orders[orders.length - 1];
+  switch (latest.status) {
+    case 'PENDING_PAYMENT':
+    case 'NEW':
+    case 'ACCEPTED':
+      return 'ordering';
+    case 'PREPARING':
+      return 'preparing';
+    case 'READY':
+      return latest.staffId ? 'serving' : 'ready';
+    case 'COMPLETED':
+      return 'serving';
+    default:
+      return 'available';
+  }
 }
 
 function formatClock(iso: string) {
@@ -250,10 +286,12 @@ export default function PisoBoard({
   restaurantId,
   editable,
   scopeToMine,
+  lens = 'payment',
 }: {
   restaurantId: string;
   editable: boolean;
   scopeToMine: boolean;
+  lens?: 'payment' | 'kitchen';
 }) {
   const { t } = useI18n();
 
@@ -440,6 +478,21 @@ export default function PisoBoard({
     }
     return result;
   }, [tables, statusByTableId, nextReservationByTableId]);
+
+  const kitchenCounts = useMemo(() => {
+    const result: Record<KitchenBucket, number> = {
+      available: 0,
+      ordering: 0,
+      preparing: 0,
+      ready: 0,
+      serving: 0,
+    };
+    for (const table of tables) {
+      const row = statusByTableId.get(table.id);
+      result[kitchenBucket(row?.orders ?? [])] += 1;
+    }
+    return result;
+  }, [tables, statusByTableId]);
 
   const orderStatusLabel = useCallback(
     (status: OrderRow['status']) => {
@@ -837,10 +890,13 @@ export default function PisoBoard({
                 const dimmed = scopeToMine && !isKnown;
                 const reservation = nextReservationByTableId.get(table.id);
                 const bucket = floorBucket(status, !!reservation);
-                const ringColor = BUCKET_COLOR[bucket];
+                const kBucket = kitchenBucket(row?.orders ?? []);
+                const ringColor =
+                  lens === 'kitchen' ? KITCHEN_BUCKET_COLOR[kBucket] : BUCKET_COLOR[bucket];
 
                 let subtitle: string;
                 if (dimmed) subtitle = t('floorPlan.status.notMine');
+                else if (lens === 'kitchen') subtitle = t(`floorPlan.kitchenStage.${kBucket}`);
                 else if (row && row.partySize != null)
                   subtitle = t('floorPlan.detail.guests', { count: row.partySize });
                 else if (bucket === 'reserved' && reservation)
@@ -916,12 +972,22 @@ export default function PisoBoard({
 
         {/* right panel */}
         <div className="w-80 shrink-0 border-l border-[#23272f] p-4 bg-[#161920]">
-          <div className="grid grid-cols-2 gap-2 mb-5">
-            <StatChip color={BUCKET_COLOR.occupied} label={t('floorPlan.legend.occupied')} value={counts.occupied} />
-            <StatChip color={BUCKET_COLOR.reserved} label={t('floorPlan.legend.reserved')} value={counts.reserved} />
-            <StatChip color={BUCKET_COLOR.waiting} label={t('floorPlan.legend.waiting')} value={counts.waiting} />
-            <StatChip color={BUCKET_COLOR.free} label={t('floorPlan.legend.free')} value={counts.free} />
-          </div>
+          {lens === 'kitchen' ? (
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              <StatChip color={KITCHEN_BUCKET_COLOR.ordering} label={t('floorPlan.kitchenStage.ordering')} value={kitchenCounts.ordering} />
+              <StatChip color={KITCHEN_BUCKET_COLOR.preparing} label={t('floorPlan.kitchenStage.preparing')} value={kitchenCounts.preparing} />
+              <StatChip color={KITCHEN_BUCKET_COLOR.ready} label={t('floorPlan.kitchenStage.ready')} value={kitchenCounts.ready} />
+              <StatChip color={KITCHEN_BUCKET_COLOR.serving} label={t('floorPlan.kitchenStage.serving')} value={kitchenCounts.serving} />
+              <StatChip color={KITCHEN_BUCKET_COLOR.available} label={t('floorPlan.kitchenStage.available')} value={kitchenCounts.available} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              <StatChip color={BUCKET_COLOR.occupied} label={t('floorPlan.legend.occupied')} value={counts.occupied} />
+              <StatChip color={BUCKET_COLOR.reserved} label={t('floorPlan.legend.reserved')} value={counts.reserved} />
+              <StatChip color={BUCKET_COLOR.waiting} label={t('floorPlan.legend.waiting')} value={counts.waiting} />
+              <StatChip color={BUCKET_COLOR.free} label={t('floorPlan.legend.free')} value={counts.free} />
+            </div>
+          )}
 
           {editable && selected ? (
             <EditPanel

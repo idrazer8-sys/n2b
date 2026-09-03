@@ -277,3 +277,31 @@ export function ReceiptIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function BellIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5z" />
+      <path d="M9.5 18a2.5 2.5 0 0 0 5 0" />
+    </Svg>
+  );
+}
+
+export function SpeakerIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" />
+      <path d="M16 8.5a5 5 0 0 1 0 7" />
+      <path d="M18.5 6a8.5 8.5 0 0 1 0 12" />
+    </Svg>
+  );
+}
+
+export function SpeakerMuteIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" />
+      <path d="M16.5 9.5l4 4M20.5 9.5l-4 4" />
+    </Svg>
+  );
+}
