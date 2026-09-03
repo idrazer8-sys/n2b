@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
 import { requireRestaurantAccess } from '@/src/lib/auth';
+import { computeChangeDueCents } from '@/src/lib/cash-payment';
 
 export async function GET(
   _req: NextRequest,
@@ -211,11 +212,12 @@ export async function GET(
           request.cashTenderedCents,
 
         changeDueCents:
-          request.collectionMethod === 'CASH' &&
-          !request.isSplit &&
-          request.cashTenderedCents !== null
-            ? request.cashTenderedCents -
-              request.amountCents
+          !request.isSplit
+            ? computeChangeDueCents(
+                request.collectionMethod,
+                request.cashTenderedCents,
+                request.amountCents
+              )
             : null,
 
         // Per-person breakdown when the table split the bill in cash:
@@ -228,11 +230,11 @@ export async function GET(
             label: split.label,
             shareCents: split.shareCents,
             tenderedCents: split.tenderedCents,
-            changeDueCents:
-              request.collectionMethod === 'CASH' &&
-              split.tenderedCents !== null
-                ? split.tenderedCents - split.shareCents
-                : null,
+            changeDueCents: computeChangeDueCents(
+              request.collectionMethod,
+              split.tenderedCents,
+              split.shareCents
+            ),
           })),
 
         status:
