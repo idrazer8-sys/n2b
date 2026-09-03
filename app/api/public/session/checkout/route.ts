@@ -7,9 +7,30 @@ import {
   verifyCustomerSession,
 } from '@/src/lib/customer-session';
 import { errorResponse } from '@/src/lib/api-response';
+import { rateLimit, clientIp } from '@/src/lib/rate-limit';
+import { verifySameOrigin, crossOriginRejection } from '@/src/lib/csrf';
+import {
+  parseCashSplits,
+  parseCashTenderedCents,
+  isSplitBill,
+  splitsSumMatchesTotal,
+} from '@/src/lib/cash-payment';
 
 export async function POST(req: NextRequest) {
   try {
+    if (!verifySameOrigin(req)) {
+      return crossOriginRejection();
+    }
+
+    const ip = clientIp(req.headers);
+    const limited = await rateLimit(`checkout:${ip}`, 20, 10 * 60 * 1000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: 'Too many requests, slow down' },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
 
     const paymentMethod =
@@ -26,53 +47,16 @@ export async function POST(req: NextRequest) {
     // Cash-only extras: either a single tendered amount, or — when the
     // table is splitting the bill — a per-person breakdown. The customer
     // enters what each person is paying; we store it as-is and let the
-    // waiter read off the change owed per person.
-    type ParsedSplit = {
-      personIndex: number;
-      label: string | null;
-      shareCents: number;
-      tenderedCents: number | null;
-    };
-
-    const rawSplits: unknown[] = Array.isArray(body.splits) ? body.splits : [];
-
-    const parsedSplits: ParsedSplit[] = [];
-
-    if (collectionMethod === 'CASH' && rawSplits.length > 0) {
-      for (let index = 0; index < rawSplits.length; index += 1) {
-        const entry = rawSplits[index];
-
-        if (!entry || typeof entry !== 'object') continue;
-
-        const record = entry as Record<string, unknown>;
-        const shareCents = Math.round(Number(record.shareCents));
-        const tenderedCentsRaw = record.tenderedCents;
-        const tenderedCents: number | null =
-          tenderedCentsRaw === undefined ||
-          tenderedCentsRaw === null ||
-          Number.isNaN(Number(tenderedCentsRaw))
-            ? null
-            : Math.round(Number(tenderedCentsRaw));
-        const label: string | null =
-          typeof record.label === 'string' && record.label.trim()
-            ? record.label.trim().slice(0, 60)
-            : null;
-
-        if (!Number.isFinite(shareCents) || shareCents <= 0) continue;
-
-        parsedSplits.push({ personIndex: index, label, shareCents, tenderedCents });
-      }
-    }
-
-    const isSplit = parsedSplits.length > 1;
-
-    const cashTenderedCents =
-      collectionMethod === 'CASH' &&
-      !isSplit &&
-      typeof body.cashTenderedCents === 'number' &&
-      Number.isFinite(body.cashTenderedCents)
-        ? Math.round(body.cashTenderedCents)
-        : null;
+    // waiter read off the change owed per person. Parsing/validation lives
+    // in src/lib/cash-payment.ts (unit-tested there) so this real-money
+    // logic isn't only ever exercised by hand.
+    const parsedSplits = parseCashSplits(body.splits, collectionMethod);
+    const isSplit = isSplitBill(parsedSplits);
+    const cashTenderedCents = parseCashTenderedCents(
+      body.cashTenderedCents,
+      collectionMethod,
+      isSplit
+    );
 
     // The client always knows which restaurant it's paying for — resolve
     // the session against that one restaurant only. Guessing by scanning
@@ -255,13 +239,7 @@ export async function POST(req: NextRequest) {
 
       if (
         isSplit &&
-        Math.abs(
-          parsedSplits.reduce(
-            (sum: number, item: ParsedSplit) => sum + item.shareCents,
-            0
-          ) -
-            amountCents
-        ) > parsedSplits.length
+        !splitsSumMatchesTotal(parsedSplits, amountCents)
       ) {
         return NextResponse.json(
           {
@@ -316,7 +294,7 @@ export async function POST(req: NextRequest) {
 
         if (isSplit) {
           await tx.sessionPaymentSplit.createMany({
-            data: parsedSplits.map((item: ParsedSplit) => ({
+            data: parsedSplits.map((item) => ({
               sessionPaymentId: created.id,
               personIndex: item.personIndex,
               label: item.label,

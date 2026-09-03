@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
 import { requireRestaurantAccess } from '@/src/lib/auth';
 import { publishOrderEvent } from '@/src/lib/order-events';
+import { verifySameOrigin, crossOriginRejection } from '@/src/lib/csrf';
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   {
     params,
   }: {
@@ -15,6 +16,10 @@ export async function POST(
   }
 ) {
   try {
+    if (!verifySameOrigin(req)) {
+      return crossOriginRejection();
+    }
+
     const access = await requireRestaurantAccess(
       params.restaurantId,
       'STAFF'

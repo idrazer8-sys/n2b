@@ -4,16 +4,31 @@ import { db } from '@/src/lib/db';
 import { stripe } from '@/src/lib/stripe';
 import { verifyCustomerSession, readSessionTokenFromCookies } from '@/src/lib/customer-session';
 import { errorResponse } from '@/src/lib/api-response';
+import { rateLimit, clientIp } from '@/src/lib/rate-limit';
+import { verifySameOrigin, crossOriginRejection } from '@/src/lib/csrf';
 
 // Creates a Stripe Checkout Session for an existing PENDING_PAYMENT order.
 // Uses Stripe Checkout (not a raw PaymentIntent) because it gives us
 // card + Apple Pay + Google Pay with zero extra frontend work, and Stripe
 // hosts the actual card entry page — we never touch card data.
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
   try {
+    if (!verifySameOrigin(req)) {
+      return crossOriginRejection();
+    }
+
+    const ip = clientIp(req.headers);
+    const limited = await rateLimit(`checkout:${ip}`, 20, 10 * 60 * 1000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: 'Too many requests, slow down' },
+        { status: 429 }
+      );
+    }
+
     const order = await db.order.findUnique({
       where: { id: params.orderId },
       include: { restaurant: { include: { stripeAccount: true } } },

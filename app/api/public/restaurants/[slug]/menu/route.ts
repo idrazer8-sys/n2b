@@ -2,12 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
 import { getOrCreateCustomerSession } from '@/src/lib/customer-session';
 import { isTableReservationBlocked, listAvailableTables } from '@/src/lib/reservations';
+import { rateLimit, clientIp } from '@/src/lib/rate-limit';
 
 // Public, unauthenticated endpoint — this is what the customer's browser
 // calls after tapping the NFC tag / scanning the QR code. Requires a valid
 // table token (?t=) scoped to this exact restaurant slug; an unknown or
 // foreign-restaurant token is rejected rather than silently falling back.
 export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
+  const ip = clientIp(req.headers);
+  // Generous limit — real customers reload this on every page visit and a
+  // table of several people can hit it near-simultaneously. This exists to
+  // cap abuse (spamming CustomerSession rows), not to throttle normal use.
+  const limited = await rateLimit(`menu:${ip}`, 120, 60 * 1000);
+  if (!limited.ok) {
+    return NextResponse.json({ error: 'Too many requests, slow down' }, { status: 429 });
+  }
+
   const token = req.nextUrl.searchParams.get('t');
   if (!token) {
     return NextResponse.json({ error: 'Missing table token' }, { status: 400 });

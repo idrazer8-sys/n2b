@@ -9,6 +9,7 @@ import {
 import { errorResponse } from '@/src/lib/api-response';
 import { rateLimit, clientIp } from '@/src/lib/rate-limit';
 import { publishOrderEvent } from '@/src/lib/order-events';
+import { verifySameOrigin, crossOriginRejection } from '@/src/lib/csrf';
 
 const lineSchema = z.object({
   menuItemId: z.string().min(1),
@@ -29,6 +30,10 @@ const schema = z.object({
 // Payment is handled separately when the table finishes the meal.
 export async function POST(req: NextRequest) {
   try {
+    if (!verifySameOrigin(req)) {
+      return crossOriginRejection();
+    }
+
     const ip = clientIp(req.headers);
 
     const limited = await rateLimit(

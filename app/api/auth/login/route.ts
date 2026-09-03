@@ -19,6 +19,11 @@ import {
   clientIp,
 } from '@/src/lib/rate-limit';
 
+import {
+  verifySameOrigin,
+  crossOriginRejection,
+} from '@/src/lib/csrf';
+
 const schema = z.object({
   email: z
     .string()
@@ -51,6 +56,10 @@ export async function POST(
   req: NextRequest
 ) {
   try {
+    if (!verifySameOrigin(req)) {
+      return crossOriginRejection();
+    }
+
     const ip =
       clientIp(req.headers);
 

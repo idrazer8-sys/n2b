@@ -4,6 +4,7 @@ import { db } from '@/src/lib/db';
 import { hashPassword, createStaffSession } from '@/src/lib/auth';
 import { errorResponse } from '@/src/lib/api-response';
 import { rateLimit, clientIp } from '@/src/lib/rate-limit';
+import { verifySameOrigin, crossOriginRejection } from '@/src/lib/csrf';
 
 const schema = z.object({
   name: z.string().min(1).max(120),
@@ -13,6 +14,10 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    if (!verifySameOrigin(req)) {
+      return crossOriginRejection();
+    }
+
     const ip = clientIp(req.headers);
     const limited = await rateLimit(`register:${ip}`, 5, 60 * 60 * 1000);
     if (!limited.ok) {
