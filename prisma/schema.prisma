@@ -20,6 +20,7 @@ model User {
   confirmedSessionPayments SessionPayment[]  @relation("SessionPaymentConfirmedBy")
   confirmedPayments        Payment[]         @relation("PaymentConfirmedBy")
   createdReservations      Reservation[]     @relation("ReservationCreatedBy")
+  orderCorrections         OrderCorrection[] @relation("OrderCorrectionCreatedBy")
 }
 
 model RestaurantStaff {
@@ -74,6 +75,11 @@ model Restaurant {
   isActive               Boolean           @default(true)
   allowPayAtRestaurant   Boolean           @default(true)
   reservationBufferMinutes Int             @default(15)
+  // NIF/CIF — required before any finalized order can be hash-chained
+  // (see FinancialRecordHash). Nullable because most restaurants haven't
+  // entered one yet; the compliance layer must refuse to run for a
+  // restaurant where this is still null rather than hashing a blank value.
+  taxId                  String?
   // Atomically incremented to hand out the next order number per
   // restaurant. Reading MAX(orderNumber)+1 at request time raced under
   // concurrent orders (two requests could read the same max before either
@@ -99,6 +105,7 @@ model Restaurant {
   tableZones             TableZone[]
   reservations           Reservation[]
   cashDenominations      CashDenomination[]
+  financialRecordHashes  FinancialRecordHash[]
 
   @@index([slug])
 }
@@ -289,6 +296,12 @@ model Order {
   events            OrderEvent[]
   items             OrderItem[]
   payment           Payment?
+  // Append-only audit trail: a completed order's totals are never
+  // overwritten in place. Any future "correct a paid order" feature must
+  // insert an OrderCorrection row here instead of mutating subtotalCents/
+  // taxCents/totalCents above — see OrderCorrection's doc comment.
+  corrections       OrderCorrection[]
+  financialRecordHashes FinancialRecordHash[]
 
   @@unique([restaurantId, orderNumber])
   @@index([restaurantId, status])
@@ -345,6 +358,67 @@ model OrderItemModifier {
   orderItem               OrderItem          @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
 
   @@index([orderItemId])
+}
+
+// Phase 2 of the VeriFactu-readiness work: the append-only correction
+// record for a completed order. NOTHING in the app writes to this model
+// yet — there is no "correct a paid order" feature built. This exists now
+// so that when that feature IS built, it has the right shape to insert
+// into from day one, instead of ever doing `db.order.update()` on a paid
+// order's totals. See the Order.corrections doc comment.
+model OrderCorrection {
+  id                     String   @id @default(cuid())
+  orderId                String
+  // Free-text reason a manager gave for the correction (e.g. "removed an
+  // item the customer never received"). Required — an audit trail entry
+  // with no reason isn't useful to an accountant or auditor.
+  reason                 String
+  correctedSubtotalCents Int
+  correctedTaxCents      Int
+  correctedTotalCents    Int
+  createdAt              DateTime @default(now())
+  createdByUserId        String
+
+  order                  Order                @relation(fields: [orderId], references: [id])
+  createdBy              User                 @relation("OrderCorrectionCreatedBy", fields: [createdByUserId], references: [id])
+  financialRecordHash    FinancialRecordHash?
+
+  @@index([orderId])
+}
+
+// Hash-chain scaffolding for VeriFactu/SIF's tamper-evidence requirement.
+// NOT wired into any live flow — nothing currently writes rows here; see
+// src/lib/verifactu.ts for the hash computation this table is meant to
+// record, and the Phase 2 summary for what's still needed (a real invoice
+// numbering/series scheme, and someone actually calling this at order
+// completion) before this satisfies the regulation.
+model FinancialRecordHash {
+  id                String              @id @default(cuid())
+  restaurantId      String
+  // Gapless, per-restaurant sequence — VeriFactu requires no gaps in the
+  // chain. Doubles as a provisional invoice number until a real
+  // invoice-numbering/series scheme is designed (see Phase 2 notes).
+  sequenceNumber    Int
+  recordType        FinancialRecordType
+  orderId           String?
+  orderCorrectionId String?             @unique
+  recordHash        String
+  // Null only for the very first record in a restaurant's chain.
+  previousHash      String?
+  createdAt         DateTime            @default(now())
+
+  restaurant        Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  order             Order?           @relation(fields: [orderId], references: [id])
+  orderCorrection   OrderCorrection? @relation(fields: [orderCorrectionId], references: [id])
+
+  @@unique([restaurantId, sequenceNumber])
+  @@index([restaurantId])
+  @@index([orderId])
+}
+
+enum FinancialRecordType {
+  ORDER
+  CORRECTION
 }
 
 model OrderEvent {
