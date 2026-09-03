@@ -16,7 +16,19 @@ import {
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import N2BLogo from '@/components/branding/N2BLogo';
-import NotificationFeed, { type FeedEvent } from '@/components/staff/NotificationFeed';
+import { type FeedEvent } from '@/components/staff/NotificationFeed';
+import PisoBoard, {
+  kitchenBucket,
+  KITCHEN_BUCKET_COLOR,
+  type KitchenBucket,
+} from '@/components/piso/PisoBoard';
+import {
+  TableIcon,
+  OrdersIcon,
+  BanknoteIcon,
+  BellIcon,
+  SignOutIcon,
+} from '@/components/branding/icons';
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -156,6 +168,42 @@ type TableStatus = {
     | null;
   totalCents: number;
 };
+
+// One row of the unscoped table-status response — the whole room, which is
+// what the floor plan draws. Same source PisoBoard reads internally, so the
+// header counts can never disagree with the map beside them.
+type FloorRow = {
+  table: { id: string; label: string };
+  partySize?: number | null;
+  totalCents: number;
+  orders: Array<{
+    id: string;
+    orderNumber: number;
+    status: StaffOrder['status'];
+    totalCents: number;
+    staffId: string | null;
+  }>;
+};
+
+function FloorClock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="text-right leading-tight">
+      <p className="text-[10px] uppercase tracking-[0.12em] text-[#1A134D]/35">
+        {now.toLocaleDateString([], { day: '2-digit', month: 'short' })}
+      </p>
+      <p className="font-display text-xl tabular-nums">
+        {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      </p>
+    </div>
+  );
+}
 
 function money(
   cents: number,
@@ -696,15 +744,27 @@ export default function StaffOrdersPage() {
     setEventFeed,
   ] = useState<FeedEvent[]>([]);
 
+  // Floor-plan view state: which nav section is open, which stage is being
+  // filtered for, and which table the waiter has tapped.
+  const [floorRows, setFloorRows] = useState<FloorRow[]>([]);
+  const [navSection, setNavSection] =
+    useState<'tables' | 'orders' | 'payments'>('tables');
+  const [floorFilter, setFloorFilter] =
+    useState<KitchenBucket | 'all'>('all');
+  const [selectedFloorTableId, setSelectedFloorTableId] =
+    useState<string | null>(null);
+
   const { t } = useI18n();
 
   const pushFeedEvent = useCallback(
-    (message: string) => {
+    (message: string, title?: string, color?: string) => {
       setEventFeed((prev) =>
         [
           {
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             message,
+            title,
+            color,
             time: new Date().toISOString(),
           },
           ...prev,
@@ -874,6 +934,13 @@ export default function StaffOrdersPage() {
             `/api/restaurants/${restaurantId}/table-status?mine=1`,
             fetchOpts
           );
+          // Unscoped too: the floor plan shows the whole room, not just the
+          // tables assigned to this waiter, so they can see what's going on
+          // around them. Actions stay limited by the same server-side rules.
+          const floorStatusRes = await fetch(
+            `/api/restaurants/${restaurantId}/table-status`,
+            fetchOpts
+          );
 
           if (
             restaurantsRes.status ===
@@ -1027,6 +1094,16 @@ export default function StaffOrdersPage() {
               ? tableStatusJson.tables
               : []
           );
+
+          const floorStatusJson = floorStatusRes.ok
+            ? await floorStatusRes.json().catch(() => ({ tables: [] }))
+            : { tables: [] };
+
+          setFloorRows(
+            Array.isArray(floorStatusJson?.tables)
+              ? floorStatusJson.tables
+              : []
+          );
         };
 
         try {
@@ -1151,41 +1228,40 @@ export default function StaffOrdersPage() {
           order.table?.label ??
           t('staffPortal.common.tableFallback');
 
+        // Headline + "Mesa 4 — #1051" subline + a colour per event type,
+        // so the activity list reads at a glance rather than as prose.
+        const tableRef = t('staffPortal.activity.tableRef', {
+          table: tableLabel,
+          number: order.orderNumber,
+        });
+
         if (
           payload.type === 'ORDER_READY' &&
           order.status === 'READY'
         ) {
           pushFeedEvent(
-            t('staffPortal.notifications.orderReady', {
-              table: tableLabel,
-              number: order.orderNumber,
-            })
+            tableRef,
+            t('staffPortal.activity.orderReady'),
+            '#e0a83a'
           );
           chime();
         } else if (payload.type === 'ORDER_CLAIMED') {
           pushFeedEvent(
-            t('staffPortal.notifications.orderClaimed', {
-              table: tableLabel,
-              number: order.orderNumber,
-              staff:
-                order.RestaurantStaff?.user?.name ??
-                t('staffPortal.header.waiterFallback'),
-            })
+            tableRef,
+            t('staffPortal.activity.orderClaimed'),
+            '#35c88a'
           );
         } else if (payload.type === 'ORDER_STATUS_CHANGED') {
           pushFeedEvent(
-            t('staffPortal.notifications.orderStatusChanged', {
-              table: tableLabel,
-              number: order.orderNumber,
-              status: statusLabel(order.status, t),
-            })
+            `${tableRef} · ${statusLabel(order.status, t)}`,
+            t('staffPortal.activity.orderStatusChanged'),
+            '#5B3DFF'
           );
         } else if (payload.type === 'ORDER_PAID') {
           pushFeedEvent(
-            t('staffPortal.notifications.orderPaid', {
-              table: tableLabel,
-              number: order.orderNumber,
-            })
+            tableRef,
+            t('staffPortal.activity.orderPaid'),
+            '#3f8f5f'
           );
         }
       } catch {
@@ -1735,6 +1811,46 @@ export default function StaffOrdersPage() {
       ]
     );
 
+  const floorOrdersByTableId = useMemo(() => {
+    const map = new Map<string, FloorRow['orders']>();
+    for (const row of floorRows) map.set(row.table.id, row.orders);
+    return map;
+  }, [floorRows]);
+
+  const floorCounts = useMemo(() => {
+    const result: Record<KitchenBucket, number> = {
+      available: 0,
+      ordering: 0,
+      preparing: 0,
+      ready: 0,
+      serving: 0,
+    };
+    for (const row of floorRows) {
+      result[kitchenBucket(row.orders)] += 1;
+    }
+    return result;
+  }, [floorRows]);
+
+  const selectedFloorRow = useMemo(
+    () =>
+      floorRows.find((row) => row.table.id === selectedFloorTableId) ?? null,
+    [floorRows, selectedFloorTableId]
+  );
+
+  // The floor rows say which orders are actually live on that table right
+  // now (session-scoped); the full order objects — with their items — come
+  // from the orders list this page already loads, so the detail panel can
+  // reuse the same claim/serve actions as the list below.
+  const selectedFloorOrders = useMemo(() => {
+    if (!selectedFloorRow) return [];
+    const liveIds = new Set(selectedFloorRow.orders.map((order) => order.id));
+    return orders.filter((order) => liveIds.has(order.id));
+  }, [selectedFloorRow, orders]);
+
+  const selectedFloorBucket = selectedFloorRow
+    ? kitchenBucket(selectedFloorRow.orders)
+    : 'available';
+
   const readyPoolCount =
     myReadyOrders.length +
     unclaimedReadyOrders.length;
@@ -1879,73 +1995,175 @@ export default function StaffOrdersPage() {
     );
   }
 
-  return (
-    <main className="theme-n2b min-h-screen bg-[#F5F6FA] text-[#1A134D]">
-      <NotificationFeed
-        events={eventFeed}
-        soundEnabled={soundEnabled}
-        onToggleSound={() =>
-          soundEnabled
-            ? setSoundEnabled(false)
-            : void enableSound()
-        }
-      />
+  const NAV = [
+    {
+      key: 'tables' as const,
+      label: t('staffPortal.nav.tables'),
+      icon: TableIcon,
+      badge: floorCounts.ready,
+    },
+    {
+      key: 'orders' as const,
+      label: t('staffPortal.nav.orders'),
+      icon: OrdersIcon,
+      badge: readyPoolCount,
+    },
+    {
+      key: 'payments' as const,
+      label: t('staffPortal.nav.payments'),
+      icon: BanknoteIcon,
+      badge: billCount,
+    },
+  ];
 
+  return (
+    <main className="theme-n2b min-h-screen bg-[#F5F6FA] text-[#1A134D] md:flex">
+      {/* Sidebar — desktop/tablet */}
+      <aside className="hidden md:flex md:w-56 md:flex-col md:fixed md:inset-y-0 bg-n2bNavy text-n2bOffwhite">
+        <div className="px-5 pt-5 pb-4">
+          <N2BLogo markSize={22} wordmarkClassName="text-sm leading-none" />
+          <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-white/40">
+            {restaurant?.name}
+          </p>
+        </div>
+
+        <nav className="flex-1 px-3 space-y-1">
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            const active = navSection === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setNavSection(item.key)}
+                className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition ${
+                  active ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'
+                }`}
+              >
+                <Icon size={17} />
+                <span className="flex-1 text-left">{item.label}</span>
+                {item.badge > 0 && (
+                  <span className="rounded-full bg-[#ef5a6f] px-1.5 text-[10px] font-bold text-white">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="px-3 pb-4 space-y-2">
+          <div className="px-3 pt-3 border-t border-white/10">
+            <p className="text-sm text-white/90">
+              {me?.user.name ?? t('staffPortal.header.waiterFallback')}
+            </p>
+            <p className="text-[11px] text-white/40">{t('dashboardCore.nav.waiter')}</p>
+          </div>
+          <LanguageSwitcher />
+          <button
+            type="button"
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+              router.push('/login');
+            }}
+            className="w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-white/60 hover:text-white"
+          >
+            <SignOutIcon size={16} />
+            {t('common.signOut')}
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile nav */}
+      <div className="md:hidden bg-n2bNavy text-n2bOffwhite px-4 pt-3 pb-2">
+        <div className="flex items-center justify-between">
+          <N2BLogo markSize={20} wordmarkClassName="text-sm leading-none" />
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <button
+              type="button"
+              onClick={async () => {
+                await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                router.push('/login');
+              }}
+              className="text-white/60"
+            >
+              <SignOutIcon size={18} />
+            </button>
+          </div>
+        </div>
+        <nav className="flex gap-1.5 mt-3 overflow-x-auto no-scrollbar">
+          {NAV.map((item) => {
+            const active = navSection === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setNavSection(item.key)}
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs ${
+                  active ? 'bg-white text-n2bNavy' : 'bg-white/10 text-white/70'
+                }`}
+              >
+                {item.label}
+                {item.badge > 0 && (
+                  <span className="rounded-full bg-[#ef5a6f] px-1.5 text-[10px] font-bold text-white">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* min-w-0 so this flex child can shrink below the floor plan's own
+          1104px room instead of pushing the whole page wider than the
+          screen — that's what lets the plan scale down beside the panel. */}
+      <div className="flex-1 min-w-0 md:ml-56">
       <header className="sticky top-0 z-30 border-b border-[#1A134D]/10 bg-[#F5F6FA]/95 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-4 py-4">
+        <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <N2BLogo
-                markSize={24}
-                wordmarkClassName="text-sm leading-none text-[#1A134D]"
-                className="mb-2"
-              />
-
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[#1A134D]/40">
-                {restaurant?.name}
-              </p>
-
-              <h1 className="font-display text-3xl mt-1">
-                {me?.user.name ??
-                  t('staffPortal.header.waiterFallback')}
+              <h1 className="font-display text-3xl">
+                {navSection === 'tables'
+                  ? t('staffPortal.nav.tables')
+                  : navSection === 'orders'
+                    ? t('staffPortal.nav.orders')
+                    : t('staffPortal.nav.payments')}
               </h1>
+              <p className="text-sm text-[#1A134D]/50 mt-1">
+                {t('staffPortal.floor.subtitle')}
+              </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <button
                 type="button"
                 onClick={() =>
-                  router.push(
-                    `/staff/${restaurantId}/piso`
-                  )
+                  soundEnabled ? setSoundEnabled(false) : void enableSound()
                 }
-                className="border border-[#1A134D]/15 px-3 py-2 text-[10px] uppercase tracking-[0.1em]"
+                className="flex items-center gap-2.5 rounded-full border border-[#1A134D]/10 bg-white px-3.5 py-2 text-[13px] shadow-sm"
               >
-                {t('floorPlan.title')}
+                <BellIcon size={15} />
+                <span>
+                  {soundEnabled
+                    ? t('staffPortal.header.soundOn')
+                    : t('staffPortal.header.enableSound')}
+                </span>
+                <span
+                  className={`relative h-5 w-9 rounded-full transition ${
+                    soundEnabled ? 'bg-[#3f8f5f]' : 'bg-[#1A134D]/15'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
+                      soundEnabled ? 'left-[18px]' : 'left-0.5'
+                    }`}
+                  />
+                </span>
               </button>
-
-              <LanguageSwitcher />
-
-              <button
-                type="button"
-                onClick={async () => {
-                  await fetch(
-                    '/api/auth/logout',
-                    {
-                      method: 'POST',
-                      credentials:
-                        'include',
-                    }
-                  );
-
-                  router.push(
-                    '/login'
-                  );
-                }}
-                className="border border-[#1A134D]/15 px-3 py-2 text-[10px] uppercase tracking-[0.1em]"
-              >
-                {t('common.signOut')}
-              </button>
+              <div className="hidden sm:block h-9 w-px bg-[#1A134D]/10" />
+              <FloorClock />
             </div>
           </div>
 
@@ -2014,13 +2232,276 @@ export default function StaffOrdersPage() {
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-6">
         {error && (
           <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 rounded-lg">
             {error}
           </div>
         )}
 
+        {navSection === 'tables' && (
+          <section className="mb-8">
+            <div className="flex flex-wrap gap-2.5 mb-5">
+              {(['all', 'available', 'ordering', 'preparing', 'ready', 'serving'] as const).map(
+                (option) => {
+                  const active = floorFilter === option;
+                  const count =
+                    option === 'all' ? floorRows.length : floorCounts[option];
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setFloorFilter(option)}
+                      className={`flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-medium transition ${
+                        active
+                          ? 'border-transparent bg-[#3f8f5f] text-white shadow-sm'
+                          : 'border-[#1A134D]/10 bg-white text-[#1A134D]/75 hover:border-[#1A134D]/25'
+                      }`}
+                    >
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{
+                          background: active
+                            ? 'rgba(255,255,255,0.9)'
+                            : option === 'all'
+                              ? '#3f8f5f'
+                              : KITCHEN_BUCKET_COLOR[option],
+                        }}
+                      />
+                      {option === 'all'
+                        ? t('staffMisc.tables.boardFilterAll')
+                        : t(`floorPlan.kitchenStage.${option}`)}
+                      <span className={active ? 'text-white/80' : 'text-[#1A134D]/45'}>
+                        ({count})
+                      </span>
+                    </button>
+                  );
+                }
+              )}
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1 min-w-0">
+                <PisoBoard
+                  restaurantId={restaurantId}
+                  editable={false}
+                  scopeToMine={false}
+                  lens="kitchen"
+                  showSidePanel={false}
+                  highlightBucket={floorFilter}
+                  onSelectTable={setSelectedFloorTableId}
+                  fitToWidth
+                  variant="light"
+                />
+              </div>
+
+              <div className="w-full lg:w-80 shrink-0 flex flex-col gap-4">
+                <div className="rounded-2xl border border-[#1A134D]/10 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-display text-lg">
+                      {t('staffPortal.notifications.title')}
+                    </h2>
+                    <span className="relative text-[#1A134D]/45">
+                      <BellIcon size={18} />
+                      {eventFeed.length > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#ef5a6f] px-1 text-[9px] font-bold text-white">
+                          {eventFeed.length > 9 ? '9+' : eventFeed.length}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {eventFeed.length === 0 ? (
+                    <p className="text-sm text-[#1A134D]/40 py-4 text-center">
+                      {t('staffPortal.notifications.empty')}
+                    </p>
+                  ) : (
+                    <div className="space-y-4 max-h-80 overflow-y-auto">
+                      {eventFeed.map((event) => (
+                        <div key={event.id} className="flex gap-3">
+                          <span
+                            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                            style={{
+                              background: `${event.color ?? '#5B3DFF'}1f`,
+                              color: event.color ?? '#5B3DFF',
+                            }}
+                          >
+                            <BellIcon size={15} />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium leading-snug">
+                              {event.title ?? event.message}
+                            </p>
+                            {event.title && (
+                              <p className="text-[13px] text-[#1A134D]/55 mt-0.5">
+                                {event.message}
+                              </p>
+                            )}
+                            <p className="text-xs text-[#1A134D]/35 mt-0.5">
+                              {elapsed(event.time, t)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-[#1A134D]/10 bg-white p-5 shadow-sm">
+                  {!selectedFloorRow ? (
+                    <p className="text-sm text-[#1A134D]/40 py-6 text-center">
+                      {t('staffMisc.tables.boardSelectPrompt')}
+                    </p>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <h3 className="font-display text-xl">
+                            {t('floorPlan.notifications.tablePrefix', {
+                              label: selectedFloorRow.table.label,
+                            })}
+                          </h3>
+                          <span
+                            className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                            style={{
+                              background: `${KITCHEN_BUCKET_COLOR[selectedFloorBucket]}1f`,
+                              color: KITCHEN_BUCKET_COLOR[selectedFloorBucket],
+                            }}
+                          >
+                            {t(`floorPlan.kitchenStage.${selectedFloorBucket}`)}
+                          </span>
+                        </div>
+
+                        {selectedFloorRow.partySize != null && (
+                          <span className="text-[13px] text-[#1A134D]/45">
+                            {t('floorPlan.detail.guests', {
+                              count: selectedFloorRow.partySize,
+                            })}
+                          </span>
+                        )}
+                      </div>
+
+                      {selectedFloorOrders.length === 0 ? (
+                        <p className="text-sm text-[#1A134D]/40 mt-4">
+                          {t('staffMisc.tables.boardNoOrders')}
+                        </p>
+                      ) : (
+                        <div className="mt-4 space-y-4">
+                          {selectedFloorOrders.map((order) => {
+                            const mine =
+                              order.staffId === myStaffId ||
+                              (canActOnAnyReadyOrder && order.staffId !== null);
+                            const unclaimed = order.staffId === null;
+
+                            return (
+                              <div
+                                key={order.id}
+                                className="border-t border-[#1A134D]/10 pt-3 first:border-t-0 first:pt-0"
+                              >
+                                <div className="flex items-baseline justify-between gap-2">
+                                  <span className="font-medium">
+                                    {t('staffPortal.common.orderNumber', {
+                                      number: order.orderNumber,
+                                    })}
+                                  </span>
+                                  <span className="font-display text-lg">
+                                    {money(
+                                      order.items.reduce(
+                                        (sum, item) =>
+                                          sum + item.unitPriceCents * item.quantity,
+                                        0
+                                      ),
+                                      currency
+                                    )}
+                                  </span>
+                                </div>
+
+                                <div className="mt-3 space-y-2">
+                                  {order.items.map((item) => (
+                                    <div
+                                      key={item.id}
+                                      className="flex items-center gap-2 text-[13px]"
+                                    >
+                                      <span className="text-[#1A134D]/45">
+                                        {item.quantity} ×
+                                      </span>
+                                      <span
+                                        className={`flex-1 ${
+                                          item.status === 'UNAVAILABLE'
+                                            ? 'line-through text-[#1A134D]/35'
+                                            : ''
+                                        }`}
+                                      >
+                                        {item.nameSnapshot ??
+                                          t('staffPortal.common.itemFallback')}
+                                      </span>
+                                      <span className="text-[#1A134D]/55">
+                                        {money(
+                                          item.unitPriceCents * item.quantity,
+                                          currency
+                                        )}
+                                      </span>
+
+                                      {mine &&
+                                        (item.status === 'SENT_TO_WAITER' ||
+                                          (item.status === 'PENDING' &&
+                                            order.status === 'READY')) && (
+                                          <button
+                                            type="button"
+                                            disabled={markingItemId === item.id}
+                                            onClick={() =>
+                                              void markItemServed(order, item)
+                                            }
+                                            className="shrink-0 rounded-lg border border-[#1A134D]/20 px-2 py-1 text-[10px] uppercase tracking-[0.06em] text-[#1A134D]/70 disabled:opacity-40"
+                                          >
+                                            {t('staffPortal.actions.markItemServed')}
+                                          </button>
+                                        )}
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div className="mt-4 flex gap-2">
+                                  {unclaimed && hasServableItem(order) && (
+                                    <button
+                                      type="button"
+                                      disabled={claimingOrderId === order.id}
+                                      onClick={() => void claimOrder(order)}
+                                      className="flex-1 rounded-lg bg-[#3f8f5f] px-3 py-3 text-sm font-medium text-white disabled:opacity-40"
+                                    >
+                                      {claimingOrderId === order.id
+                                        ? t('staffPortal.actions.taking')
+                                        : t('staffPortal.actions.takeOrder')}
+                                    </button>
+                                  )}
+
+                                  {mine && order.status === 'READY' && (
+                                    <button
+                                      type="button"
+                                      disabled={updatingOrderId === order.id}
+                                      onClick={() => void markServed(order)}
+                                      className="flex-1 rounded-lg bg-[#1A134D] px-3 py-3 text-sm font-medium text-[#F5F6FA] disabled:opacity-40"
+                                    >
+                                      {updatingOrderId === order.id
+                                        ? t('staffPortal.actions.updating')
+                                        : t('staffPortal.actions.markServed')}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {navSection === 'orders' && (
         <section className="mb-8">
           <div className="flex items-end justify-between gap-4 mb-4">
             <div>
@@ -2294,8 +2775,9 @@ export default function StaffOrdersPage() {
             </p>
           )}
         </section>
+        )}
 
-        {myActiveOrders.length >
+        {navSection === 'orders' && myActiveOrders.length >
           0 && (
           <section className="mb-8">
             <div className="mb-4">
@@ -2373,6 +2855,7 @@ export default function StaffOrdersPage() {
           </section>
         )}
 
+        {navSection === 'tables' && (
         <section className="mb-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-4">
             <div>
@@ -2596,8 +3079,16 @@ export default function StaffOrdersPage() {
             </div>
           )}
         </section>
+        )}
 
-        {relevantPayments.length >
+        {navSection === 'payments' && relevantPayments.length ===
+          0 && (
+          <div className="border border-[#1A134D]/10 rounded-xl px-6 py-12 text-center text-sm text-[#1A134D]/50">
+            {t('staffPortal.floor.noBills')}
+          </div>
+        )}
+
+        {navSection === 'payments' && relevantPayments.length >
           0 && (
           <section className="mb-8">
             <div className="mb-4">
@@ -2846,6 +3337,7 @@ export default function StaffOrdersPage() {
           </section>
         )}
 
+        {navSection === 'orders' && (
         <section className="mb-8">
           <div className="mb-4">
             <p className="text-[10px] uppercase tracking-[0.18em] text-[#1A134D]/40">
@@ -2923,6 +3415,7 @@ export default function StaffOrdersPage() {
             </div>
           )}
         </section>
+        )}
 
         <footer className="border-t border-line pt-6 pb-10">
           <p className="text-[10px] uppercase tracking-[0.16em] text-ink/35">
@@ -2933,6 +3426,7 @@ export default function StaffOrdersPage() {
             {t('staffPortal.footer.body')}
           </p>
         </footer>
+      </div>
       </div>
     </main>
   );

@@ -237,11 +237,11 @@ function TableChairs({
 // to be fixed decoration drawn identically for every restaurant; they're
 // now real rows the manager places (and only if the restaurant has them),
 // so this just styles whatever they've actually put on their plan.
-function ZoneContents({ zone }: { zone: ZoneRow }) {
+function ZoneContents({ zone, light = false }: { zone: ZoneRow; light?: boolean }) {
   const label: React.CSSProperties = {
     fontSize: 12,
     fontWeight: 600,
-    color: '#7a8291',
+    color: light ? '#5c5a56' : '#7a8291',
     letterSpacing: '0.06em',
   };
 
@@ -282,13 +282,28 @@ function ZoneContents({ zone }: { zone: ZoneRow }) {
   }
 
   return (
-    <span className="absolute top-2 left-3 text-[12px] font-semibold text-[#7a8291]">
+    <span
+      className="absolute top-2 left-3 text-[12px] font-semibold"
+      style={{ color: light ? '#8a8781' : '#7a8291' }}
+    >
       {zone.name}
     </span>
   );
 }
 
-function zoneStyle(kind: ZoneKind, isSelected: boolean): React.CSSProperties {
+function zoneStyle(
+  kind: ZoneKind,
+  isSelected: boolean,
+  light = false
+): React.CSSProperties {
+  if (light) {
+    // Fixtures read as solid built structure (kitchen, bar, restrooms);
+    // table-grouping zones are just faint outlines of the room itself.
+    if (kind === 'ZONE') {
+      return { background: 'rgba(255,255,255,0.35)', border: '1px solid rgba(26,19,77,0.06)' };
+    }
+    return { background: '#D8D6D2', border: '1px solid rgba(26,19,77,0.08)' };
+  }
   if (isSelected) {
     return { background: '#1c2028', border: '2px solid #d97a3d' };
   }
@@ -312,6 +327,8 @@ export default function PisoBoard({
   highlightBucket = 'all',
   showSidePanel = true,
   onSelectTable,
+  fitToWidth = false,
+  variant = 'dark',
 }: {
   restaurantId: string;
   editable: boolean;
@@ -330,8 +347,35 @@ export default function PisoBoard({
   // own fetch/state — it looks the table up in data it's already loading
   // for its own purposes.
   onSelectTable?: (tableId: string | null) => void;
+  // Scales the whole room down to whatever width it's given instead of
+  // scrolling it, so the plan can sit next to a side panel and still be
+  // visible in one glance.
+  fitToWidth?: boolean;
+  // "light" is the waiter floor view: a pale room with small colour-coded
+  // circular markers per table, instead of the dark editor board with its
+  // big wooden table slabs.
+  variant?: 'dark' | 'light';
 }) {
   const { t } = useI18n();
+
+  const canvasWrapRef = useRef<HTMLDivElement | null>(null);
+  const [fitScale, setFitScale] = useState(1);
+
+  useEffect(() => {
+    if (!fitToWidth) return;
+    const element = canvasWrapRef.current;
+    if (!element) return;
+
+    const measure = () => {
+      const width = element.clientWidth;
+      if (width > 0) setFitScale(Math.min(1, width / 1104));
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [fitToWidth]);
 
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [tables, setTables] = useState<TableRow[]>([]);
@@ -841,7 +885,13 @@ export default function PisoBoard({
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-black/10 bg-[#181b22] text-[#eef1f5] p-16 text-center text-sm text-[#7a8291]">
+      <div
+        className={`rounded-2xl border p-16 text-center text-sm ${
+          variant === 'light'
+            ? 'border-[#1A134D]/10 bg-white text-[#1A134D]/40'
+            : 'border-black/10 bg-[#181b22] text-[#7a8291]'
+        }`}
+      >
         {t('floorPlan.loading')}
       </div>
     );
@@ -855,11 +905,22 @@ export default function PisoBoard({
     );
   }
 
+  const light = variant === 'light';
+
   return (
-    <div className="rounded-2xl overflow-hidden border border-[#23272f] bg-[#12141a] text-[#eef1f5]">
-      <div className="flex" style={{ minHeight: 560 }}>
+    <div
+      className={`rounded-2xl overflow-hidden border ${
+        light
+          ? 'border-[#1A134D]/10 bg-white text-[#1A134D]'
+          : 'border-[#23272f] bg-[#12141a] text-[#eef1f5]'
+      }`}
+    >
+      <div className="flex" style={{ minHeight: light ? 0 : 560 }}>
         {/* canvas */}
-        <div className="flex-1 p-4">
+        {/* min-w-0: without it the flex item refuses to shrink below the
+            1104px room, so a caller using fitToWidth could never actually
+            give it a narrower box to scale into. */}
+        <div className="flex-1 min-w-0 p-4">
           {editable && (
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <ToolButton icon={PlusIcon} label={t('floorPlan.toolbar.addTable')} onClick={() => void addTable()} disabled={saving} />
@@ -881,14 +942,32 @@ export default function PisoBoard({
           )}
 
           <div
+            ref={canvasWrapRef}
             onPointerDown={() => {
               setSelected(null);
               if (!editable) onSelectTable?.(null);
             }}
-            className="relative rounded-xl border border-[#23272f] bg-[#181b22] overflow-auto"
-            style={{ width: '100%', maxWidth: 1104, height: 620 }}
+            className={`relative rounded-xl border ${
+              light
+                ? 'border-[#1A134D]/10 bg-[#EFE9E1]'
+                : 'border-[#23272f] bg-[#181b22]'
+            } ${fitToWidth ? 'overflow-hidden' : 'overflow-auto'}`}
+            style={{
+              width: '100%',
+              maxWidth: 1104,
+              height: fitToWidth ? 620 * fitScale : 620,
+            }}
           >
-            <div className="relative" style={{ width: 1104, height: 620 }}>
+            <div
+              className="relative"
+              style={{
+                width: 1104,
+                height: 620,
+                ...(fitToWidth
+                  ? { transform: `scale(${fitScale})`, transformOrigin: 'top left' }
+                  : {}),
+              }}
+            >
               {zones.length === 0 && tables.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm text-[#5b6472]">
                   {editable
@@ -909,11 +988,11 @@ export default function PisoBoard({
                       top: zone.y,
                       width: zone.width,
                       height: zone.height,
-                      ...zoneStyle(zone.kind, isSel),
+                      ...zoneStyle(zone.kind, isSel, light),
                       cursor: editable ? 'move' : 'default',
                     }}
                   >
-                    <ZoneContents zone={zone} />
+                    <ZoneContents zone={zone} light={light} />
                     {editable && isSel && (
                       <div
                         onPointerDown={(e) => {
@@ -974,33 +1053,74 @@ export default function PisoBoard({
                       cursor: editable ? 'move' : dimmed ? 'default' : 'pointer',
                     }}
                   >
-                    <TableChairs shape={table.shape} width={width} height={height} />
+                    {light ? (
+                      <>
+                        {/* The table slab itself is pale furniture; the
+                            status lives in a small coloured disc on top of
+                            it, so a waiter reads the room by colour alone. */}
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            borderRadius: table.shape === 'CIRCLE' ? '50%' : 8,
+                            background: '#FBFAF8',
+                            border: '1px solid rgba(26,19,77,0.10)',
+                            boxShadow: isSel
+                              ? `0 0 0 3px ${ringColor}55`
+                              : '0 1px 2px rgba(0,0,0,0.06)',
+                          }}
+                        />
+                        <div
+                          className="absolute flex items-center justify-center rounded-full"
+                          style={{
+                            left: '50%',
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            width: Math.max(30, Math.min(46, Math.min(width, height) * 0.5)),
+                            height: Math.max(30, Math.min(46, Math.min(width, height) * 0.5)),
+                            background: ringColor,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+                          }}
+                          title={`${table.label} · ${subtitle}`}
+                        >
+                          <span
+                            className="font-bold leading-none text-white"
+                            style={{ fontSize: 14 }}
+                          >
+                            {shortTableLabel(table.label)}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <TableChairs shape={table.shape} width={width} height={height} />
 
-                    <div
-                      className="absolute inset-0 flex flex-col items-center justify-center"
-                      style={{
-                        borderRadius: table.shape === 'CIRCLE' ? '50%' : 12,
-                        background: 'linear-gradient(155deg, #8a6239, #6b4a29)',
-                        border: `3px solid ${isSel ? '#d97a3d' : ringColor}`,
-                        boxShadow: isSel
-                          ? '0 0 0 3px rgba(217,122,61,0.25)'
-                          : `0 0 0 3px ${ringColor}33, inset 0 1px 6px rgba(0,0,0,0.35)`,
-                      }}
-                    >
-                      <span
-                        className="font-extrabold leading-none"
-                        style={{ fontSize: 17, color: '#fdf6ec', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
-                        title={table.label}
-                      >
-                        {shortTableLabel(table.label)}
-                      </span>
-                      <span
-                        className="text-center leading-tight px-1 mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
-                        style={{ fontSize: 9.5, color: '#e9d9c2' }}
-                      >
-                        {subtitle}
-                      </span>
-                    </div>
+                        <div
+                          className="absolute inset-0 flex flex-col items-center justify-center"
+                          style={{
+                            borderRadius: table.shape === 'CIRCLE' ? '50%' : 12,
+                            background: 'linear-gradient(155deg, #8a6239, #6b4a29)',
+                            border: `3px solid ${isSel ? '#d97a3d' : ringColor}`,
+                            boxShadow: isSel
+                              ? '0 0 0 3px rgba(217,122,61,0.25)'
+                              : `0 0 0 3px ${ringColor}33, inset 0 1px 6px rgba(0,0,0,0.35)`,
+                          }}
+                        >
+                          <span
+                            className="font-extrabold leading-none"
+                            style={{ fontSize: 17, color: '#fdf6ec', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+                            title={table.label}
+                          >
+                            {shortTableLabel(table.label)}
+                          </span>
+                          <span
+                            className="text-center leading-tight px-1 mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
+                            style={{ fontSize: 9.5, color: '#e9d9c2' }}
+                          >
+                            {subtitle}
+                          </span>
+                        </div>
+                      </>
+                    )}
 
                     {editable && isSel && (
                       <div

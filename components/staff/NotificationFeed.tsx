@@ -8,6 +8,10 @@ export type FeedEvent = {
   id: string;
   message: string;
   time: string; // ISO
+  // Optional richer presentation used by the waiter floor view: a short
+  // headline for what happened, plus the colour its icon is tinted with.
+  title?: string;
+  color?: string;
 };
 
 function elapsed(iso: string, t: (key: string, vars?: Record<string, string | number>) => string) {
