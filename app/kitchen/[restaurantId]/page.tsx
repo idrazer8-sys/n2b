@@ -38,13 +38,6 @@ type Order = {
   }[];
 };
 
-// Drinks-only orders need no preparation, so kitchen can send them
-// straight to the waiter instead of walking them through Accept ->
-// Preparing -> Ready.
-function isDrinksOnly(order: Order) {
-  return order.items.every((item) => item.kitchenKind === 'DRINKS');
-}
-
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',
@@ -235,17 +228,6 @@ function KitchenOrderCard({
         </span>
 
         <div className="flex items-center gap-2">
-          {dangerActionLabel && onDangerAction && (
-            <button
-              type="button"
-              disabled={updating}
-              onClick={onDangerAction}
-              className="border border-[#9b554a]/50 px-4 py-3 text-sm font-medium text-[#e2a5a5] disabled:opacity-50"
-            >
-              {dangerActionLabel}
-            </button>
-          )}
-
           {secondaryActionLabel && onSecondaryAction && (
             <button
               type="button"
@@ -254,6 +236,17 @@ function KitchenOrderCard({
               className="border border-n2bOffwhite/40 px-4 py-3 text-sm font-medium text-n2bOffwhite disabled:opacity-50"
             >
               {secondaryActionLabel}
+            </button>
+          )}
+
+          {dangerActionLabel && onDangerAction && (
+            <button
+              type="button"
+              disabled={updating}
+              onClick={onDangerAction}
+              className="border border-[#9b554a]/50 px-4 py-3 text-sm font-medium text-[#e2a5a5] disabled:opacity-50"
+            >
+              {dangerActionLabel}
             </button>
           )}
 
@@ -699,16 +692,8 @@ export default function KitchenPage() {
                     onSendItemToWaiter={(itemId) =>
                       void markItemSentToWaiter(order.id, itemId)
                     }
-                    secondaryActionLabel={
-                      isDrinksOnly(order)
-                        ? t('staffMisc.kitchen.sendDirectToWaiter')
-                        : undefined
-                    }
-                    onSecondaryAction={
-                      isDrinksOnly(order)
-                        ? () => updateOrder(order.id, 'READY')
-                        : undefined
-                    }
+                    secondaryActionLabel={t('staffMisc.kitchen.sendDirectToWaiter')}
+                    onSecondaryAction={() => updateOrder(order.id, 'READY')}
                     dangerActionLabel={t('staffMisc.kitchen.rejectOrder')}
                     onDangerAction={() => {
                       if (
