@@ -169,6 +169,18 @@ function money(
   ).format(cents / 100);
 }
 
+// Staff type amounts as "20" or "20,50" (comma, matching es-ES formatting) —
+// this accepts either a comma or a dot as the decimal separator.
+function parseCentsInput(value: string): number | null {
+  const normalized = value.trim().replace(',', '.');
+  if (normalized === '') return null;
+
+  const amount = Number(normalized);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+
+  return Math.round(amount * 100);
+}
+
 function elapsed(
   createdAt: string,
   t: T
@@ -657,6 +669,20 @@ export default function StaffOrdersPage() {
   ] =
     useState<string | null>(
       null
+    );
+
+  // Change calculator: what staff actually received from the customer in
+  // hand, separate from cashTenderedCents (which is only ever what the
+  // customer pre-selected online at checkout, and may be null or wrong by
+  // the time cash physically changes hands). Keyed by paymentRequest.id
+  // for a single bill, or `${paymentRequest.id}:${split.id}` per person on
+  // a split bill. Purely a local display aid — never sent to the server.
+  const [
+    cashReceivedInputs,
+    setCashReceivedInputs,
+  ] =
+    useState<Record<string, string>>(
+      {}
     );
 
   const [
@@ -2680,27 +2706,82 @@ export default function StaffOrdersPage() {
                       </p>
 
                       {request.collectionMethod === 'CASH' &&
-                        !request.isSplit &&
-                        request.cashTenderedCents != null && (
+                        !request.isSplit && (
                           <div className="mt-3 rounded-lg bg-black/[0.03] px-3 py-2">
-                            <p className="text-[10px] uppercase tracking-[0.1em] text-ink/40">
-                              {t('staffMisc.tables.tendered')}
-                            </p>
-                            <p className="text-sm font-medium">
-                              {money(
-                                request.cashTenderedCents,
-                                request.currency || currency
-                              )}
-                            </p>
+                            {request.cashTenderedCents != null && (
+                              <>
+                                <p className="text-[10px] uppercase tracking-[0.1em] text-ink/40">
+                                  {t('staffMisc.tables.tendered')}
+                                </p>
+                                <p className="text-sm font-medium">
+                                  {money(
+                                    request.cashTenderedCents,
+                                    request.currency || currency
+                                  )}
+                                </p>
+                              </>
+                            )}
+
                             <p className="text-[10px] uppercase tracking-[0.1em] text-ink/40 mt-2">
-                              {t('staffMisc.tables.changeDue')}
+                              {t('staffMisc.tables.changeCalculator')}
                             </p>
-                            <p className="font-display text-lg">
-                              {money(
-                                Math.max(0, request.changeDueCents ?? 0),
-                                request.currency || currency
-                              )}
-                            </p>
+
+                            {(() => {
+                              const key = request.id;
+                              const inputValue =
+                                cashReceivedInputs[key] ??
+                                (request.cashTenderedCents != null
+                                  ? String(request.cashTenderedCents / 100)
+                                  : '');
+                              const receivedCents =
+                                parseCentsInput(inputValue);
+
+                              return (
+                                <>
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-sm text-ink/50">
+                                      {t('staffMisc.tables.cashReceivedLabel')}
+                                    </span>
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={inputValue}
+                                      onChange={(e) =>
+                                        setCashReceivedInputs((prev) => ({
+                                          ...prev,
+                                          [key]: e.target.value,
+                                        }))
+                                      }
+                                      placeholder={money(
+                                        request.amountCents,
+                                        request.currency || currency
+                                      )}
+                                      className="w-24 rounded-lg border border-ink/15 bg-white px-2 py-1 text-sm text-right"
+                                    />
+                                  </div>
+
+                                  {receivedCents != null && (
+                                    <p
+                                      className={`font-display text-lg mt-1 ${
+                                        receivedCents < request.amountCents
+                                          ? 'text-red-600'
+                                          : ''
+                                      }`}
+                                    >
+                                      {receivedCents < request.amountCents
+                                        ? `${t('staffMisc.tables.notEnoughCash')}: ${money(
+                                            request.amountCents - receivedCents,
+                                            request.currency || currency
+                                          )}`
+                                        : `${t('staffMisc.tables.changeDue')}: ${money(
+                                            receivedCents - request.amountCents,
+                                            request.currency || currency
+                                          )}`}
+                                    </p>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                         )}
 
@@ -2708,34 +2789,76 @@ export default function StaffOrdersPage() {
                         request.isSplit &&
                         request.splits &&
                         request.splits.length > 0 && (
-                          <div className="mt-3 rounded-lg bg-black/[0.03] px-3 py-2 space-y-2">
+                          <div className="mt-3 rounded-lg bg-black/[0.03] px-3 py-2 space-y-3">
                             <p className="text-[10px] uppercase tracking-[0.1em] text-ink/40">
                               {t('staffMisc.tables.splitBill')} ·{' '}
                               {t('staffMisc.tables.perPersonChange')}
                             </p>
-                            {request.splits.map((split) => (
-                              <div
-                                key={split.id}
-                                className="flex items-center justify-between text-sm"
-                              >
-                                <span>
-                                  {split.label ?? `#${split.personIndex + 1}`} ·{' '}
-                                  {t('staffMisc.tables.owes')}{' '}
-                                  {money(
-                                    split.shareCents,
-                                    request.currency || currency
-                                  )}
-                                </span>
-                                <span className="font-medium">
-                                  {split.tenderedCents != null
-                                    ? money(
-                                        Math.max(0, split.changeDueCents ?? 0),
+                            {request.splits.map((split) => {
+                              const key = `${request.id}:${split.id}`;
+                              const inputValue =
+                                cashReceivedInputs[key] ??
+                                (split.tenderedCents != null
+                                  ? String(split.tenderedCents / 100)
+                                  : '');
+                              const receivedCents =
+                                parseCentsInput(inputValue);
+
+                              return (
+                                <div
+                                  key={split.id}
+                                  className="flex items-center justify-between gap-2 text-sm"
+                                >
+                                  <span>
+                                    {split.label ?? `#${split.personIndex + 1}`} ·{' '}
+                                    {t('staffMisc.tables.owes')}{' '}
+                                    {money(
+                                      split.shareCents,
+                                      request.currency || currency
+                                    )}
+                                  </span>
+
+                                  <span className="flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={inputValue}
+                                      onChange={(e) =>
+                                        setCashReceivedInputs((prev) => ({
+                                          ...prev,
+                                          [key]: e.target.value,
+                                        }))
+                                      }
+                                      placeholder={money(
+                                        split.shareCents,
                                         request.currency || currency
-                                      )
-                                    : t('staffMisc.tables.noChangeInfo')}
-                                </span>
-                              </div>
-                            ))}
+                                      )}
+                                      className="w-20 rounded-lg border border-ink/15 bg-white px-2 py-1 text-sm text-right"
+                                    />
+                                    <span
+                                      className={`font-medium ${
+                                        receivedCents != null &&
+                                        receivedCents < split.shareCents
+                                          ? 'text-red-600'
+                                          : ''
+                                      }`}
+                                    >
+                                      {receivedCents == null
+                                        ? t('staffMisc.tables.noChangeInfo')
+                                        : receivedCents < split.shareCents
+                                        ? money(
+                                            split.shareCents - receivedCents,
+                                            request.currency || currency
+                                          )
+                                        : money(
+                                            receivedCents - split.shareCents,
+                                            request.currency || currency
+                                          )}
+                                    </span>
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                     </div>

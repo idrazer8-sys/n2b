@@ -69,6 +69,9 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.tables.perPersonChange': 'Cambio por persona',
     'staffMisc.tables.owes': 'Debe',
     'staffMisc.tables.noChangeInfo': 'El cliente no indicó con cuánto paga.',
+    'staffMisc.tables.changeCalculator': 'Calculadora de cambio',
+    'staffMisc.tables.cashReceivedLabel': 'Efectivo recibido',
+    'staffMisc.tables.notEnoughCash': 'Falta efectivo',
 
     // StaffPortalLogin.tsx
     'staffMisc.login.checkingAccess': 'Comprobando el acceso...',
@@ -187,6 +190,9 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.tables.perPersonChange': 'Change per person',
     'staffMisc.tables.owes': 'Owes',
     'staffMisc.tables.noChangeInfo': 'The customer did not say how much they will hand over.',
+    'staffMisc.tables.changeCalculator': 'Change calculator',
+    'staffMisc.tables.cashReceivedLabel': 'Cash received',
+    'staffMisc.tables.notEnoughCash': 'Not enough cash',
 
     // StaffPortalLogin.tsx
     'staffMisc.login.checkingAccess': 'Checking access...',
@@ -308,6 +314,9 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.tables.perPersonChange': 'Troco por pessoa',
     'staffMisc.tables.owes': 'Deve',
     'staffMisc.tables.noChangeInfo': 'O cliente não indicou com quanto vai pagar.',
+    'staffMisc.tables.changeCalculator': 'Calculadora de troco',
+    'staffMisc.tables.cashReceivedLabel': 'Dinheiro recebido',
+    'staffMisc.tables.notEnoughCash': 'Falta dinheiro',
 
     // StaffPortalLogin.tsx
     'staffMisc.login.checkingAccess': 'A verificar o acesso...',
@@ -436,6 +445,9 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.tables.perPersonChange': 'Wechselgeld pro Person',
     'staffMisc.tables.owes': 'Schuldet',
     'staffMisc.tables.noChangeInfo': 'Der Gast hat nicht angegeben, mit wie viel er zahlt.',
+    'staffMisc.tables.changeCalculator': 'Wechselgeldrechner',
+    'staffMisc.tables.cashReceivedLabel': 'Erhaltenes Bargeld',
+    'staffMisc.tables.notEnoughCash': 'Nicht genug Bargeld',
 
     // StaffPortalLogin.tsx
     'staffMisc.login.checkingAccess': 'Zugriff wird geprüft...',
@@ -563,6 +575,9 @@ export const staffMisc: Record<Locale, Record<string, string>> = {
     'staffMisc.tables.perPersonChange': 'Monnaie par personne',
     'staffMisc.tables.owes': 'Doit',
     'staffMisc.tables.noChangeInfo': "Le client n'a pas indiqué avec quel montant il paie.",
+    'staffMisc.tables.changeCalculator': 'Calculatrice de monnaie',
+    'staffMisc.tables.cashReceivedLabel': 'Espèces reçues',
+    'staffMisc.tables.notEnoughCash': 'Montant insuffisant',
 
     // StaffPortalLogin.tsx
     'staffMisc.login.checkingAccess': "Vérification de l'accès...",
