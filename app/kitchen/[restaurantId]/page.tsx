@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import * as Sentry from '@sentry/nextjs';
 
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -327,6 +328,40 @@ export default function KitchenPage() {
     setOrders(kitchenOrders);
   }, [restaurantId, router, t]);
 
+  // Best-effort refresh used everywhere AFTER the initial page load — SSE
+  // reconnects, incoming push events, and a periodic safety-net poll. On
+  // success it clears any previously-shown error (the whole point: a
+  // transient failure that already recovered shouldn't leave a stale
+  // "Failed to fetch" banner sitting there forever). On failure it reports
+  // to Sentry and otherwise stays quiet — a single missed background
+  // refresh isn't worth alarming the kitchen over when the next poll or
+  // reconnect will likely just fix itself; the `connected` indicator
+  // already shows something's off.
+  const refreshInBackground = useCallback(async () => {
+    try {
+      await load();
+      setError(null);
+    } catch (err) {
+      if (err instanceof Error && err.message === '__UNAUTHORIZED__') {
+        router.push('/login');
+        return;
+      }
+
+      Sentry.captureException(err, { tags: { area: 'kitchen-background-refresh' } });
+    }
+  }, [load, router]);
+
+  // Independent of SSE entirely — a safety net so the board eventually
+  // self-heals even if a push event was missed or the stream had trouble
+  // reconnecting silently, rather than requiring a manual page refresh.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void refreshInBackground();
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [refreshInBackground]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -381,21 +416,31 @@ export default function KitchenPage() {
 
     source.onopen = () => {
       setConnected(true);
+      // Reconnecting (first connect, or recovering from a drop — e.g. a
+      // deploy cycling the server instance that was serving this stream)
+      // can mean events were missed while disconnected. Resync immediately
+      // instead of waiting for the next push event or poll tick, and this
+      // is also what clears a stale error banner from a failed initial
+      // load once connectivity is actually back.
+      void refreshInBackground();
     };
 
-    source.onmessage = async (event) => {
-      try {
-        const data = JSON.parse(event.data);
+    source.onmessage = (event) => {
+      let data: { type?: string };
 
-        if (
-          data.type === 'ORDER_CREATED' ||
-          data.type === 'ORDER_STATUS_CHANGED' ||
-          data.type === 'ORDER_READY'
-        ) {
-          await load();
-        }
+      try {
+        data = JSON.parse(event.data);
       } catch {
         // Ignore malformed events.
+        return;
+      }
+
+      if (
+        data.type === 'ORDER_CREATED' ||
+        data.type === 'ORDER_STATUS_CHANGED' ||
+        data.type === 'ORDER_READY'
+      ) {
+        void refreshInBackground();
       }
     };
 
@@ -407,7 +452,7 @@ export default function KitchenPage() {
       source.close();
       setConnected(false);
     };
-  }, [load, restaurantId]);
+  }, [refreshInBackground, restaurantId]);
 
   async function updateOrder(
     orderId: string,
