@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         );
       }
 
-      const updatedItem = await db.$transaction(async (tx) => {
+      const { updatedItem, orderAdvancedToReady } = await db.$transaction(async (tx) => {
         const savedItem = await tx.orderItem.update({
           where: { id: item.id },
           data: { status: 'SENT_TO_WAITER', sentToWaiterAt: now },
@@ -83,14 +83,59 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
           },
         });
 
-        return savedItem;
+        // If every item the kitchen still owed has now either been sent
+        // ahead to the waiter or 86'd, there's nothing left to accept or
+        // prepare — advance the order straight to READY so it drops off
+        // the kitchen's Nuevos/Aceptados/En preparación board immediately,
+        // the same way a single-item "send direct to waiter" order would,
+        // instead of sitting there needing pointless Accept/Prepare taps
+        // for an order the kitchen has no further work on.
+        const remainingPending = await tx.orderItem.count({
+          where: { orderId: item.orderId, status: 'PENDING' },
+        });
+
+        let advanced = false;
+
+        if (remainingPending === 0 && NOT_YET_READY.includes(item.order.status)) {
+          await tx.order.update({
+            where: { id: item.orderId },
+            data: { status: 'READY', readyAt: now },
+          });
+
+          await tx.orderEvent.create({
+            data: {
+              orderId: item.orderId,
+              restaurantId: params.restaurantId,
+              type: 'ORDER_READY',
+              actorUserId: access.user.id,
+              metadata: {
+                fromStatus: item.order.status,
+                toStatus: 'READY',
+                auto: true,
+                reason: 'all_items_sent_to_waiter',
+              },
+              createdAt: now,
+            },
+          });
+
+          advanced = true;
+        }
+
+        return { updatedItem: savedItem, orderAdvancedToReady: advanced };
       });
 
       publishOrderEvent(params.restaurantId, {
         type: 'ORDER_STATUS_CHANGED',
         orderId: item.orderId,
-        status: item.order.status,
+        status: orderAdvancedToReady ? 'READY' : item.order.status,
       });
+
+      if (orderAdvancedToReady) {
+        publishOrderEvent(params.restaurantId, {
+          type: 'ORDER_READY',
+          orderId: item.orderId,
+        });
+      }
 
       return NextResponse.json(updatedItem);
     }
