@@ -24,7 +24,12 @@ const cspDirectives = [
   // https hosts (see images.remotePatterns below), so img-src can't be
   // pinned to a fixed allowlist.
   `img-src 'self' https: data:`,
-  `connect-src 'self'${isProd ? '' : ' ws://localhost:* http://localhost:*'}`,
+  // Sentry's error/performance ingest — only ever contacted if SENTRY_DSN /
+  // NEXT_PUBLIC_SENTRY_DSN are actually configured; harmless to allow when
+  // they aren't, since nothing calls out to these hosts in that case.
+  `connect-src 'self' https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io${
+    isProd ? '' : ' ws://localhost:* http://localhost:*'
+  }`,
   `frame-src 'none'`,
   `frame-ancestors 'none'`,
   `object-src 'none'`,
@@ -51,7 +56,14 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
-  experimental: { serverActions: { bodySizeLimit: '2mb' } },
+  experimental: {
+    serverActions: { bodySizeLimit: '2mb' },
+    // Required on this Next.js version for instrumentation.ts (Sentry's
+    // server/edge init hook, and onRequestError) to actually run — it
+    // defaults to off here, unlike newer Next.js versions where it's
+    // stable. Revisit removing this explicit flag after a Next.js upgrade.
+    instrumentationHook: true,
+  },
   images: { remotePatterns: [{ protocol: 'https', hostname: '**' }] },
   async headers() {
     return [
@@ -62,4 +74,21 @@ const nextConfig = {
     ];
   },
 };
-module.exports = nextConfig;
+
+const { withSentryConfig } = require('@sentry/nextjs');
+
+// Wrapping is safe even with zero Sentry env vars configured: without
+// SENTRY_AUTH_TOKEN the plugin skips source-map upload (with a console
+// warning, not a build failure) and the app just runs as if unwrapped.
+module.exports = withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+  widenClientFileUpload: true,
+  disableLogger: true,
+  // This app's Stripe webhook and other API routes are Node.js Route
+  // Handlers, not Vercel Cron — nothing here needs the wizard's default
+  // tunneling/monitoring extras.
+  automaticVercelMonitors: false,
+});

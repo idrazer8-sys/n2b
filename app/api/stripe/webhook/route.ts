@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
+import * as Sentry from '@sentry/nextjs';
 import { db } from '@/src/lib/db';
 import { stripe } from '@/src/lib/stripe';
 import { publishOrderEvent } from '@/src/lib/order-events';
@@ -100,6 +101,17 @@ export async function POST(req: NextRequest) {
       'Webhook signature verification failed',
       err
     );
+
+    // Not necessarily an incident on its own (scanners hit this endpoint
+    // with garbage constantly) — but a real STRIPE_WEBHOOK_SECRET
+    // misconfiguration or rotation would show up as a run of these, and
+    // that IS an incident (every real payment confirmation silently
+    // failing), so it's worth a low-severity breadcrumb rather than
+    // nothing at all.
+    Sentry.captureMessage('Stripe webhook signature verification failed', {
+      level: 'warning',
+      extra: { error: err instanceof Error ? err.message : String(err) },
+    });
 
     return NextResponse.json(
       { error: 'Invalid signature' },
@@ -398,6 +410,16 @@ export async function POST(req: NextRequest) {
       'Stripe webhook processing error',
       err
     );
+
+    // A processing failure here means Stripe will retry delivery (it
+    // treats a 5xx as "try again later"), so the payment/subscription
+    // state isn't lost — but it IS stuck until this is noticed and fixed,
+    // which is exactly the kind of silent-until-a-customer-complains
+    // failure this should be reported for.
+    Sentry.captureException(err, {
+      tags: { area: 'stripe-webhook' },
+      extra: { eventType: event.type, eventId: event.id },
+    });
 
     return NextResponse.json(
       { error: 'Webhook processing failed' },
