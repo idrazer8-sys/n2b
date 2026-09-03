@@ -63,6 +63,12 @@ const nextConfig = {
     // defaults to off here, unlike newer Next.js versions where it's
     // stable. Revisit removing this explicit flag after a Next.js upgrade.
     instrumentationHook: true,
+    // pdfkit loads its standard-font .afm data files at runtime via
+    // fs.readFileSync(path.join(__dirname, ...)) — letting webpack bundle
+    // it (the default) breaks that relative lookup. Keeping it external
+    // makes the PDF financial report export work under Vercel's Node.js
+    // runtime.
+    serverComponentsExternalPackages: ['pdfkit'],
   },
   images: { remotePatterns: [{ protocol: 'https', hostname: '**' }] },
   async headers() {

@@ -165,6 +165,11 @@ model MenuCategory {
   createdAt         DateTime         @default(now())
   isDessertCategory Boolean          @default(false)
   kitchenKind       MenuCategoryKind @default(FOOD)
+  // Optional convenience default: new items created in this category start
+  // with this VAT rate pre-filled (still editable per item — see
+  // MenuItem.vatRateBps for why the per-item value is what's authoritative).
+  // Null means no category-level default has been set.
+  defaultVatRateBps Int?
   restaurant        Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   items             MenuItem[]
 
@@ -193,6 +198,14 @@ model MenuItem {
   ingredients  String[]       @default([])
   isAvailable  Boolean        @default(true)
   sortOrder    Int            @default(0)
+  // Basis points (1000 = 10.00%), not an enum — VAT classification depends
+  // on what the specific item legally is (e.g. Spain's reduced 10% for
+  // hostelry food/drink service vs. 21% general rate for certain other
+  // products/services), which only the restaurant or their accountant can
+  // correctly determine. Defaults to 1000 (10%, Spain's hostelry rate) as a
+  // reasonable starting point — never silently guessed beyond that default,
+  // and always editable per item.
+  vatRateBps   Int            @default(1000)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   category     MenuCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -293,6 +306,15 @@ model OrderItem {
   unitPriceCents  Int
   quantity        Int
   lineTotalCents  Int
+  // Snapshot of MenuItem.vatRateBps at the moment this line was ordered —
+  // same reasoning as nameSnapshot/unitPriceCents: a rate change to the
+  // menu item later must never alter a historical order's figures.
+  // NULL specifically means "this order predates VAT tracking" (added in
+  // the add_menu_item_vat_rate migration) — reporting must show those
+  // periods as "VAT not tracked" rather than fabricating a rate for them;
+  // it is never a stand-in for a legitimate 0% rate, which is stored as
+  // the literal integer 0.
+  vatRateBpsSnapshot Int?
   notes           String?
   status          OrderItemStatus     @default(PENDING)
   sentToWaiterAt  DateTime?

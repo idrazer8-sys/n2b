@@ -268,3 +268,12 @@ export function BanknoteIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function ReceiptIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5.5 3.5h13v17l-2.25-1.5-2.25 1.5-2.25-1.5-2.25 1.5-2.25-1.5-1.75 1.5v-17z" />
+      <path d="M8.5 8h7M8.5 11.5h7M8.5 15h4" />
+    </Svg>
+  );
+}

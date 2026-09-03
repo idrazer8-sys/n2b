@@ -11,6 +11,7 @@ type Item = {
   isAvailable: boolean;
   description: string | null;
   imageUrl?: string | null;
+  vatRateBps: number;
 };
 
 type Category = {
@@ -18,6 +19,7 @@ type Category = {
   name: string;
   items: Item[];
   kitchenKind: 'FOOD' | 'DRINKS' | 'DESSERT';
+  defaultVatRateBps: number | null;
 };
 
 type Restaurant = {
@@ -352,6 +354,7 @@ export default function MenuManagementPage({
                 restaurantId={restaurantId}
                 categoryId={category.id}
                 currency={currency}
+                defaultVatRateBps={category.defaultVatRateBps}
                 onDone={() => {
                   setAddingItemTo(null);
                   load();
@@ -506,11 +509,13 @@ function NewItemForm({
   restaurantId,
   categoryId,
   currency,
+  defaultVatRateBps,
   onDone,
 }: {
   restaurantId: string;
   categoryId: string;
   currency: string;
+  defaultVatRateBps: number | null;
   onDone: () => void;
 }) {
   const { t } = useI18n();
@@ -518,6 +523,9 @@ function NewItemForm({
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [vatRate, setVatRate] = useState(
+    defaultVatRateBps !== null ? (defaultVatRateBps / 100).toString() : '10'
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -525,6 +533,7 @@ function NewItemForm({
     e.preventDefault();
 
     const numericPrice = Number(price);
+    const numericVatRate = Number(vatRate);
 
     if (!name.trim()) {
       setError(t('menuTables.editor.enterItemName'));
@@ -533,6 +542,15 @@ function NewItemForm({
 
     if (!Number.isFinite(numericPrice) || numericPrice < 0) {
       setError(t('menuTables.editor.enterValidPrice'));
+      return;
+    }
+
+    if (
+      !Number.isFinite(numericVatRate) ||
+      numericVatRate < 0 ||
+      numericVatRate > 100
+    ) {
+      setError(t('menuTables.editor.enterValidVatRate'));
       return;
     }
 
@@ -561,6 +579,7 @@ function NewItemForm({
             description: description.trim() || undefined,
             priceCents: Math.round(numericPrice * 100),
             imageUrl: imageUrl.trim() || undefined,
+            vatRateBps: Math.round(numericVatRate * 100),
             modifiers: [],
           }),
         }
@@ -624,6 +643,25 @@ function NewItemForm({
         className="w-full border border-line rounded-lg px-3 py-2 text-sm"
       />
 
+      <div>
+        <label className="block text-xs text-ink/50 mb-1">
+          {t('menuTables.editor.vatRateLabel')}
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            required
+            inputMode="decimal"
+            value={vatRate}
+            onChange={(e) => setVatRate(e.target.value)}
+            className="w-24 border border-line rounded-lg px-3 py-2 text-sm"
+          />
+          <span className="text-sm text-ink/50">%</span>
+        </div>
+        <p className="mt-1 text-xs text-ink/40">
+          {t('menuTables.editor.vatRateHint')}
+        </p>
+      </div>
+
       {error && (
         <p className="text-sm text-red-700">{error}</p>
       )}
@@ -672,6 +710,9 @@ function EditItemForm({
   const [imageUrl, setImageUrl] = useState(
     item.imageUrl ?? ''
   );
+  const [vatRate, setVatRate] = useState(
+    (item.vatRateBps / 100).toString()
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -679,6 +720,7 @@ function EditItemForm({
     e.preventDefault();
 
     const numericPrice = Number(price);
+    const numericVatRate = Number(vatRate);
 
     if (!name.trim()) {
       setError(t('menuTables.editor.enterItemName'));
@@ -687,6 +729,15 @@ function EditItemForm({
 
     if (!Number.isFinite(numericPrice) || numericPrice < 0) {
       setError(t('menuTables.editor.enterValidPrice'));
+      return;
+    }
+
+    if (
+      !Number.isFinite(numericVatRate) ||
+      numericVatRate < 0 ||
+      numericVatRate > 100
+    ) {
+      setError(t('menuTables.editor.enterValidVatRate'));
       return;
     }
 
@@ -714,6 +765,7 @@ function EditItemForm({
             description: description.trim() || null,
             priceCents: Math.round(numericPrice * 100),
             imageUrl: imageUrl.trim() || null,
+            vatRateBps: Math.round(numericVatRate * 100),
           }),
         }
       );
@@ -773,6 +825,25 @@ function EditItemForm({
         placeholder={t('menuTables.editor.imageUrlPlaceholder')}
         className="w-full border border-line rounded-lg px-3 py-2 text-sm"
       />
+
+      <div>
+        <label className="block text-xs text-ink/50 mb-1">
+          {t('menuTables.editor.vatRateLabel')}
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            required
+            inputMode="decimal"
+            value={vatRate}
+            onChange={(e) => setVatRate(e.target.value)}
+            className="w-24 border border-line rounded-lg px-3 py-2 text-sm"
+          />
+          <span className="text-sm text-ink/50">%</span>
+        </div>
+        <p className="mt-1 text-xs text-ink/40">
+          {t('menuTables.editor.vatRateHint')}
+        </p>
+      </div>
 
       {error && (
         <p className="text-sm text-red-700">{error}</p>

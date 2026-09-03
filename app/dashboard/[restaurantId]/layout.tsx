@@ -20,6 +20,7 @@ import {
   FloorPlanIcon,
   CalendarIcon,
   BanknoteIcon,
+  ReceiptIcon,
 } from '@/components/branding/icons';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 
@@ -110,6 +111,7 @@ export default function RestaurantDashboardLayout({
     { key: 'cash', label: t('cashDrawer.title'), href: `${base}/cash`, icon: BanknoteIcon },
     { key: 'orders', label: t('dashboardCore.nav.orders'), href: `${base}/orders`, icon: OrdersIcon },
     { key: 'analytics', label: t('dashboardCore.nav.analytics'), href: `${base}/analytics`, icon: AnalyticsIcon },
+    { key: 'financials', label: t('financials.title'), href: `${base}/financials`, icon: ReceiptIcon },
     { key: 'waiters', label: t('dashboardCore.nav.waiters'), href: `${base}/waiters`, icon: StaffIcon },
     { key: 'payments', label: t('dashboardCore.nav.payments'), href: `${base}/settings/payments`, icon: PaymentsIcon },
     { key: 'billing', label: t('billing.title'), href: billingHref, icon: MembershipIcon },

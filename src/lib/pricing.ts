@@ -22,9 +22,34 @@ export class PricingError extends Error {
   }
 }
 
-const TAX_RATE_BPS = 0; // MVP: menu prices are tax-inclusive (common EU model).
-// If you switch to tax-exclusive pricing, set this per-restaurant and apply
-// it below instead of leaving it at 0.
+/**
+ * Splits a tax-INCLUSIVE amount into its taxable base and VAT portion.
+ * Menu prices already include VAT (this is what's actually charged to the
+ * customer and never changes based on this split) — this just answers "how
+ * much of that price was VAT," using the standard extract-from-gross
+ * formula: base = gross / (1 + rate), vat = gross - base.
+ *
+ * `vatRateBps` is basis points (1000 = 10.00%). Rounds to the nearest cent
+ * on the base, then derives vat as the exact residual — this guarantees
+ * baseCents + vatCents === inclusiveCents for every single call, with no
+ * rounding drift, which is what lets callers sum many lines' base/vat
+ * separately and still have them add up to the grand total exactly.
+ */
+export function extractVat(
+  inclusiveCents: number,
+  vatRateBps: number
+): { baseCents: number; vatCents: number } {
+  if (vatRateBps <= 0) {
+    return { baseCents: inclusiveCents, vatCents: 0 };
+  }
+
+  const baseCents = Math.round((inclusiveCents * 10000) / (10000 + vatRateBps));
+  const vatCents = inclusiveCents - baseCents;
+  return { baseCents, vatCents };
+}
+
+/** Per-rate totals, keyed by vatRateBps (not percentage — see extractVat). */
+export type VatBreakdown = Record<number, { baseCents: number; vatCents: number }>;
 
 export async function priceCart(restaurantId: string, lines: CartLineInput[]) {
   if (lines.length === 0) {
@@ -38,6 +63,7 @@ export async function priceCart(restaurantId: string, lines: CartLineInput[]) {
     quantity: number;
     unitPriceCents: number;
     lineTotalCents: number;
+    vatRateBpsSnapshot: number;
     notes?: string;
     modifiers: Array<{ modifierOptionId: string; nameSnapshot: string; priceDeltaCentsSnapshot: number }>;
   }> = [];
@@ -109,13 +135,40 @@ export async function priceCart(restaurantId: string, lines: CartLineInput[]) {
       quantity: line.quantity,
       unitPriceCents,
       lineTotalCents,
+      // Modifiers (e.g. "extra cheese") are taxed at the same rate as the
+      // item they modify — a modifier changing an item's tax classification
+      // isn't modeled; if that's ever needed, this is where it'd go.
+      vatRateBpsSnapshot: item.vatRateBps,
       notes: line.notes?.slice(0, 280),
       modifiers: modifierSnapshots,
     });
   }
 
-  const taxCents = Math.round((subtotalCents * TAX_RATE_BPS) / 10000);
-  const totalCents = subtotalCents + taxCents;
+  // subtotalCents above is actually the tax-INCLUSIVE amount (what's
+  // charged) — extract the VAT breakdown from it per line, per rate, then
+  // derive taxCents/totalCents from that so the base+vat=total invariant
+  // holds exactly (see extractVat's rounding guarantee).
+  const vatBreakdown: VatBreakdown = {};
+  let taxCents = 0;
 
-  return { pricedLines, subtotalCents, taxCents, totalCents };
+  for (const line of pricedLines) {
+    const { baseCents, vatCents } = extractVat(line.lineTotalCents, line.vatRateBpsSnapshot);
+    taxCents += vatCents;
+
+    const existing = vatBreakdown[line.vatRateBpsSnapshot];
+    vatBreakdown[line.vatRateBpsSnapshot] = {
+      baseCents: (existing?.baseCents ?? 0) + baseCents,
+      vatCents: (existing?.vatCents ?? 0) + vatCents,
+    };
+  }
+
+  // subtotalCents currently holds the inclusive total; totalCents (what's
+  // actually charged) is that same figure — unaffected by VAT accounting —
+  // while subtotalCents is redefined to mean the taxable base, matching
+  // the existing Order schema's subtotalCents + taxCents = totalCents
+  // invariant.
+  const totalCents = subtotalCents;
+  subtotalCents = totalCents - taxCents;
+
+  return { pricedLines, subtotalCents, taxCents, totalCents, vatBreakdown };
 }

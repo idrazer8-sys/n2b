@@ -7,6 +7,7 @@ import { errorResponse } from '@/src/lib/api-response';
 const schema = z.object({
   kitchenKind: z.enum(['FOOD', 'DRINKS', 'DESSERT']).optional(),
   name: z.string().min(1).max(80).optional(),
+  defaultVatRateBps: z.number().int().min(0).max(10000).nullable().optional(),
 });
 
 export async function PATCH(

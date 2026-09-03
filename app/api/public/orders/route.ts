@@ -189,6 +189,8 @@ export async function POST(req: NextRequest) {
                         line.quantity,
                       lineTotalCents:
                         line.lineTotalCents,
+                      vatRateBpsSnapshot:
+                        line.vatRateBpsSnapshot,
                       notes:
                         line.notes,
                       modifiers: {
