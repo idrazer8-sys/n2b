@@ -21,11 +21,17 @@ Next.js (App Router), PostgreSQL/Prisma, and Stripe + Stripe Connect.
 - **Realtime**: Server-Sent Events (one-directional push from server → dashboard). Simpler than
   WebSockets to run (plain HTTP, no separate socket server, browser auto-reconnects via
   `EventSource`), and orders only ever need to flow one direction: server tells staff "new order."
-  **Caveat**: the current implementation (`src/lib/order-events.ts`) is an in-process
-  `EventEmitter`, which only works for a single Node.js instance. It's correct for the MVP
-  (`next start` on one server) — the moment you run multiple serverless instances/regions, swap
-  it for Postgres `LISTEN/NOTIFY` or a hosted pub/sub (Supabase Realtime, Pusher). The
-  publish/subscribe call sites are already isolated in that one file so the swap is contained.
+  **Multi-instance**: `src/lib/order-events.ts` always publishes via an in-process `EventEmitter`
+  (correct only within a single Node.js instance — same-request-cycle delivery, unchanged since
+  the MVP) and *additionally* supports Postgres `LISTEN/NOTIFY` as an opt-in upgrade for
+  cross-instance delivery (needed the moment you run more than one serverless instance, which
+  Vercel does by default). The upgrade activates by setting `REALTIME_DIRECT_URL` to a genuine
+  non-pooled Postgres connection — deliberately not reusing `DATABASE_URL`/`DIRECT_URL`, since on
+  Supabase specifically neither is a real direct connection (verified live: Supabase's pooler
+  accepts a `LISTEN` with no error but never actually relays a `NOTIFY`), and Supabase's true
+  direct host is IPv6-only, which Vercel's serverless functions can't reach without Supabase's
+  paid IPv4 add-on. See `.env.example` for the exact tradeoffs. Until you've made that call, the
+  app behaves exactly as it always did (single-instance-only realtime) — nothing regresses.
 - **Auth**: Custom JWT-in-httpOnly-cookie for both staff and customers (`src/lib/auth.ts`,
   `src/lib/customer-session.ts`) rather than a full auth framework — two very different session
   types (long-lived staff login vs. ephemeral no-account customer session) with different
@@ -166,14 +172,19 @@ See `.env.example`. Summary:
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | Postgres connection string |
+| `DATABASE_URL` | Postgres connection string (pooled, used at runtime) |
+| `DIRECT_URL` | Non-pooled-enough-for-migrations connection string, used by Prisma migrations |
 | `AUTH_SECRET` | Signs staff dashboard session JWTs |
 | `CUSTOMER_SESSION_SECRET` | Signs customer (no-account) session JWTs — **different** secret from the above, deliberately, so a leaked staff secret can't forge customer sessions or vice versa |
 | `STRIPE_SECRET_KEY` | Server-side Stripe API key |
 | `STRIPE_WEBHOOK_SECRET` | Verifies webhook payload signatures |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Client-side Stripe key (Checkout redirect only needs the secret key server-side today; kept here for when Payment Element is added) |
 | `STRIPE_PRICE_{BASIC,PRO,BUSINESS}[_ANNUAL]` | Membership Price IDs — create with `npx tsx scripts/setup-stripe-products.ts` |
-| `NEXT_PUBLIC_APP_URL` | Used to build table URLs, QR payloads, Stripe redirect URLs |
+| `NEXT_PUBLIC_APP_URL` | Used to build table URLs, QR payloads, Stripe redirect URLs, and to validate the Origin header on state-changing requests (§9) |
+| `REALTIME_DIRECT_URL` | Optional — a genuine non-pooled Postgres connection, activates cross-instance realtime via `LISTEN`/`NOTIFY` (see §1's Realtime note) |
+| `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | Optional — error tracking. The app runs identically without them; Sentry is just an inert no-op |
+| `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` | Optional — only needed to upload source maps to Sentry at build time |
+| `PLATFORM_ADMIN_EMAILS` | Comma-separated emails allowed into `/admin/support` |
 
 ## 9. Security checklist (implemented)
 
@@ -182,14 +193,28 @@ See `.env.example`. Summary:
 - [x] Role-based access (`OWNER` > `MANAGER` > `STAFF`) enforced server-side on every dashboard route
 - [x] Tenant isolation via `restaurantId` filters on every query, not just the initial access check
 - [x] Zod validation on every request body
-- [x] Rate limiting on login, registration, and order creation (in-memory — see note in
-      `src/lib/rate-limit.ts` about swapping to Redis for multi-instance deploys)
+- [x] Rate limiting on login, registration, order creation, and both checkout endpoints —
+      **DB-backed** (`RateLimitBucket` table, atomic `INSERT ... ON CONFLICT`, see
+      `src/lib/rate-limit.ts`), not in-memory, so it actually works across Vercel's multiple
+      serverless instances instead of each instance keeping its own separate (and therefore
+      useless) count
+- [x] CSRF defense-in-depth on every money-moving and auth endpoint (`src/lib/csrf.ts`) — checks
+      the `Origin`/`Referer` header actually points at this app, on top of every session cookie
+      already being `SameSite=Lax` (which alone blocks the classic cross-site cookie-riding CSRF
+      attack against a fetch/XHR request)
+- [x] Security headers on every response (`next.config.js`): CSP, HSTS, X-Content-Type-Options,
+      X-Frame-Options, Referrer-Policy, Permissions-Policy
 - [x] Stripe webhook signature verification; webhook is the only path that marks an order paid
 - [x] Order status transitions constrained to an explicit allow-list state machine
       (`ALLOWED_TRANSITIONS` in the order PATCH route) — no illegal jumps
 - [x] All prices computed server-side from the DB; client price/total fields are never read
 - [x] No card data touches our servers/DB (Stripe Checkout hosts card entry)
 - [x] Generic error messages on auth endpoints (no user-enumeration via error text)
+- [x] Error tracking (Sentry) wired into server, edge, and client, with explicit reporting on the
+      Stripe webhook's failure paths and the SSE realtime stream's — see §1 and `.env.example`
+- [x] Automated tests for the money-critical logic: the pricing engine, split-bill/cash-change
+      parsing, and the Stripe webhook (signature verification, idempotent redelivery, both payment
+      flows) — see §11a
 
 ## 10. What's built vs. what's next (mapped to your phase plan)
 
@@ -198,11 +223,11 @@ See `.env.example`. Summary:
 | 1 — Restaurant account, create restaurant, create menu, create tables | **Built** |
 | 2 — Table URLs, QR codes, NFC-compatible URLs | **Built** |
 | 3 — Customer menu, cart, order creation | **Built** |
-| 4 — Stripe payment | **Built** (needs your live/test Stripe keys — can't be tested inside this sandbox, which has no network access) |
+| 4 — Stripe payment | **Built and verified end-to-end** in Stripe test mode (Checkout, webhook, both the session-based and legacy order-based flows) |
 | 5 — Restaurant order dashboard | **Built** |
-| 6 — Realtime order status | **Built via SSE** — see the single-instance caveat in §1 |
+| 6 — Realtime order status | **Built via SSE** — see §1 for the single-instance-by-default / opt-in cross-instance note |
 | 7 — Stripe Connect | **Built** (onboarding flow + fee split logic; needs live Stripe Connect to actually test) |
-| 8 — Advanced analytics, split bill, AI menu import (OCR) | **Not built** — out of scope for MVP per your own instructions (§13, §22) |
+| 8 — Advanced analytics, split bill, AI menu import (OCR) | **Built** — analytics dashboard (`/dashboard/[id]/analytics`), cash split-bill with per-person change (`src/lib/cash-payment.ts`, `SessionPaymentSplit`), and AI menu import from photos (`/dashboard/[id]/menu/import`, needs a `GEMINI_API_KEY`) |
 
 Not yet wired into the dashboard UI (available via the API, documented inline in the route files):
 modifier-group editing (`POST /api/restaurants/[id]/menu/items` accepts a full `modifiers[]`
@@ -225,6 +250,19 @@ to see the owner side.
 For Stripe: `stripe listen --forward-to localhost:3000/api/stripe/webhook` during local dev, and
 put the CLI's printed `whsec_...` into `STRIPE_WEBHOOK_SECRET`.
 
+## 11a. Automated tests
+
+```bash
+npm test
+```
+
+Runs the Vitest suite in `tests/`. Most of these are integration tests against the real dev
+database (not mocks) — reservation conflicts, the Postgres `EXCLUDE` constraint, rate limiting,
+the pricing engine, split-bill/cash-change parsing, the order-events pub/sub layer, and the Stripe
+webhook (signed with the real `STRIPE_WEBHOOK_SECRET`, verified locally — no network call to
+Stripe is involved). They create and clean up their own throwaway rows, but do need `DATABASE_URL`
+pointed at a real Postgres instance to run at all.
+
 ## 12. Manual test plan (from your §25/§26)
 
 - [ ] Table 2's QR/URL correctly identifies Table 2 in the menu response
@@ -246,6 +284,10 @@ put the CLI's printed `whsec_...` into `STRIPE_WEBHOOK_SECRET`.
 
 ## 13. Legal / compliance notes (research before going live — not legal advice)
 
+- **Privacy Policy / Terms of Service**: placeholder pages exist at `/legal/privacy` and
+  `/legal/terms` (linked from the marketing footer, signup, and customer checkout), with a clear
+  on-page banner stating they're template content, not legal advice. Get an actual lawyer's review
+  before you rely on them.
 - **GDPR**: `CustomerSession` intentionally stores no PII — just restaurant/table IDs and an
   expiry. If you later add receipts-by-email or loyalty accounts, that introduces personal data
   and a lawful basis / retention policy for it.
