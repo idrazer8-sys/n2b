@@ -1042,6 +1042,18 @@ function CartDrawer({
           <p className="mt-3 text-center text-[10px] uppercase tracking-[0.12em] text-[#29251f]/35">
             {t('customerFlow.cart.securePayment')}
           </p>
+
+          <p className="mt-2 text-center text-[10px] text-[#29251f]/35">
+            {t('legal.agreementLeadIn')}{' '}
+            <a href="/legal/terms" className="underline hover:text-[#29251f]/60">
+              {t('legal.inlineTermsLink')}
+            </a>{' '}
+            {t('legal.and')}{' '}
+            <a href="/legal/privacy" className="underline hover:text-[#29251f]/60">
+              {t('legal.inlinePrivacyLink')}
+            </a>
+            .
+          </p>
         </div>
       </div>
     </div>

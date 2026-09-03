@@ -78,6 +78,18 @@ export default function RegisterPage() {
             {loading ? t('authPages.register.creating') : t('authPages.register.createAccount')}
           </button>
 
+          <p className="text-xs text-n2bOffwhite/40 text-center">
+            {t('legal.agreementLeadInRegister')}{' '}
+            <a href="/legal/terms" className="underline hover:text-n2bOffwhite/70">
+              {t('legal.inlineTermsLink')}
+            </a>{' '}
+            {t('legal.and')}{' '}
+            <a href="/legal/privacy" className="underline hover:text-n2bOffwhite/70">
+              {t('legal.inlinePrivacyLink')}
+            </a>
+            .
+          </p>
+
           <p className="text-sm text-n2bOffwhite/50 text-center">
             {t('authPages.register.alreadyHaveAccount')} <a href="/dashboard/login" className="underline text-n2bOffwhite/80">{t('common.signIn')}</a>
           </p>

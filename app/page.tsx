@@ -479,6 +479,12 @@ export default function MarketingPage() {
             <a href="/dashboard/register" className="hover:text-white transition-colors">
               {t('marketing.footer.linkRegister')}
             </a>
+            <a href="/legal/terms" className="hover:text-white transition-colors">
+              {t('legal.footer.termsLink')}
+            </a>
+            <a href="/legal/privacy" className="hover:text-white transition-colors">
+              {t('legal.footer.privacyLink')}
+            </a>
             <LanguageSwitcher className="border border-white/15 rounded-lg px-2 py-1.5 text-xs bg-white/5 text-white outline-none focus:border-white/40" />
           </div>
         </div>
