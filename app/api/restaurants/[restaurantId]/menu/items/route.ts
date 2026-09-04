@@ -30,10 +30,6 @@ const itemSchema = z.object({
   ingredients: z.array(z.string().max(60)).max(40).default([]),
   isAvailable: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
-  // Omitted entirely -> falls back to the category's defaultVatRateBps if
-  // it has one set, else the schema default (1000 = 10%) — see
-  // MenuItem.vatRateBps in schema.prisma.
-  vatRateBps: z.number().int().min(0).max(10000).optional(),
   modifiers: z.array(modifierSchema).max(15).default([]),
 });
 
@@ -64,11 +60,6 @@ export async function POST(req: NextRequest, { params }: { params: { restaurantI
         ingredients: body.ingredients,
         isAvailable: body.isAvailable,
         sortOrder: body.sortOrder,
-        ...(body.vatRateBps !== undefined
-          ? { vatRateBps: body.vatRateBps }
-          : category.defaultVatRateBps !== null
-            ? { vatRateBps: category.defaultVatRateBps }
-            : {}),
         modifiers: {
           create: body.modifiers.map((m) => ({
             name: m.name,

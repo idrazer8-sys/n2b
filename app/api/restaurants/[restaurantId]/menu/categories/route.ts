@@ -7,7 +7,6 @@ import { errorResponse } from '@/src/lib/api-response';
 const schema = z.object({
   name: z.string().min(1).max(80),
   sortOrder: z.number().int().default(0),
-  defaultVatRateBps: z.number().int().min(0).max(10000).nullable().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: { restaurantId: string } }) {

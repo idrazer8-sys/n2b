@@ -49,9 +49,6 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.editor.enterValidPrice': 'Introduce un precio válido.',
     'menuTables.editor.enterValidVatRate':
       'Introduce un tipo de IVA válido (0-100%).',
-    'menuTables.editor.vatRateLabel': 'Tipo de IVA',
-    'menuTables.editor.vatRateHint':
-      'Solo tú o tu asesor fiscal podéis determinar la clasificación de IVA correcta para este artículo. En hostelería en España, el tipo reducido del 10% suele aplicar a comida y bebida servidas.',
     'menuTables.editor.invalidImageUrl':
       'La URL de la imagen debe ser válida.',
     'menuTables.editor.dishNamePlaceholder': 'Nombre del plato',
@@ -205,10 +202,6 @@ export const menuTables: Record<Locale, Record<string, string>> = {
       'e.g. Starters, Pasta, Desserts',
     'menuTables.editor.enterItemName': 'Enter an item name.',
     'menuTables.editor.enterValidPrice': 'Enter a valid price.',
-    'menuTables.editor.enterValidVatRate': 'Enter a valid VAT rate (0-100%).',
-    'menuTables.editor.vatRateLabel': 'VAT rate',
-    'menuTables.editor.vatRateHint':
-      'Only you or your accountant can determine the correct VAT classification for this item. In Spanish hospitality, the reduced 10% rate usually applies to food and drink served on-premises.',
     'menuTables.editor.invalidImageUrl': 'Image URL must be valid.',
     'menuTables.editor.dishNamePlaceholder': 'Dish name',
     'menuTables.editor.pricePlaceholder': 'Price ({{currency}})',
@@ -363,9 +356,6 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.editor.enterValidPrice': 'Introduza um preço válido.',
     'menuTables.editor.enterValidVatRate':
       'Introduza uma taxa de IVA válida (0-100%).',
-    'menuTables.editor.vatRateLabel': 'Taxa de IVA',
-    'menuTables.editor.vatRateHint':
-      'Só você ou o seu contabilista podem determinar a classificação de IVA correta para este artigo. Na restauração em Portugal, a taxa reduzida costuma aplicar-se a alimentos e bebidas servidos.',
     'menuTables.editor.invalidImageUrl': 'O URL da imagem tem de ser válido.',
     'menuTables.editor.dishNamePlaceholder': 'Nome do prato',
     'menuTables.editor.pricePlaceholder': 'Preço ({{currency}})',
@@ -531,9 +521,6 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.editor.enterValidPrice': 'Gib einen gültigen Preis ein.',
     'menuTables.editor.enterValidVatRate':
       'Gib einen gültigen Mehrwertsteuersatz ein (0-100%).',
-    'menuTables.editor.vatRateLabel': 'Mehrwertsteuersatz',
-    'menuTables.editor.vatRateHint':
-      'Nur du oder dein Steuerberater könnt die korrekte Mehrwertsteuer-Einstufung für diesen Artikel bestimmen.',
     'menuTables.editor.invalidImageUrl': 'Die Bild-URL muss gültig sein.',
     'menuTables.editor.dishNamePlaceholder': 'Gerichtname',
     'menuTables.editor.pricePlaceholder': 'Preis ({{currency}})',
@@ -699,9 +686,6 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.editor.enterValidPrice': 'Saisissez un prix valide.',
     'menuTables.editor.enterValidVatRate':
       'Saisissez un taux de TVA valide (0-100%).',
-    'menuTables.editor.vatRateLabel': 'Taux de TVA',
-    'menuTables.editor.vatRateHint':
-      "Seul vous ou votre comptable pouvez déterminer la classification TVA correcte pour cet article.",
     'menuTables.editor.invalidImageUrl':
       "L'URL de l'image doit être valide.",
     'menuTables.editor.dishNamePlaceholder': 'Nom du plat',
