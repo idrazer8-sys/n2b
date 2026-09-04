@@ -82,6 +82,12 @@ type ReservationRow = {
 const DEFAULT_TABLE_SIZE = 88;
 const DEFAULT_ZONE_SIZE = { width: 260, height: 220 };
 
+// Below this the table discs stop being readable/tappable, so a narrow
+// screen pans the room instead of shrinking it further.
+const MIN_FIT_SCALE = 0.62;
+const ROOM_WIDTH = 1104;
+const ROOM_HEIGHT = 620;
+
 function statusDotColor(status: StatusRow['status']) {
   switch (status) {
     case 'FREE':
@@ -349,7 +355,9 @@ export default function PisoBoard({
   onSelectTable?: (tableId: string | null) => void;
   // Scales the whole room down to whatever width it's given instead of
   // scrolling it, so the plan can sit next to a side panel and still be
-  // visible in one glance.
+  // visible in one glance. It never shrinks past MIN_FIT_SCALE though —
+  // on a phone held upright, fitting the full room into 375px would leave
+  // the table numbers unreadable, so past that point it pans instead.
   fitToWidth?: boolean;
   // "light" is the waiter floor view: a pale room with small colour-coded
   // circular markers per table, instead of the dark editor board with its
@@ -360,6 +368,10 @@ export default function PisoBoard({
 
   const canvasWrapRef = useRef<HTMLDivElement | null>(null);
   const [fitScale, setFitScale] = useState(1);
+  // The canvas only exists once loading is done — this effect has to re-run
+  // then, or it registers against a ref that's still null (the loading
+  // placeholder) and the room never gets measured at all.
+  const [canvasMounted, setCanvasMounted] = useState(false);
 
   useEffect(() => {
     if (!fitToWidth) return;
@@ -368,14 +380,16 @@ export default function PisoBoard({
 
     const measure = () => {
       const width = element.clientWidth;
-      if (width > 0) setFitScale(Math.min(1, width / 1104));
+      if (width > 0) {
+        setFitScale(Math.min(1, Math.max(MIN_FIT_SCALE, width / ROOM_WIDTH)));
+      }
     };
 
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [fitToWidth]);
+  }, [fitToWidth, canvasMounted]);
 
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [tables, setTables] = useState<TableRow[]>([]);
@@ -942,27 +956,44 @@ export default function PisoBoard({
           )}
 
           <div
-            ref={canvasWrapRef}
+            ref={(node) => {
+              canvasWrapRef.current = node;
+              if (node && !canvasMounted) setCanvasMounted(true);
+            }}
             onPointerDown={() => {
               setSelected(null);
               if (!editable) onSelectTable?.(null);
             }}
-            className={`relative rounded-xl border ${
+            className={`relative rounded-xl border overflow-auto ${
               light
                 ? 'border-[#1A134D]/10 bg-[#EFE9E1]'
                 : 'border-[#23272f] bg-[#181b22]'
-            } ${fitToWidth ? 'overflow-hidden' : 'overflow-auto'}`}
+            }`}
             style={{
               width: '100%',
-              maxWidth: 1104,
-              height: fitToWidth ? 620 * fitScale : 620,
+              maxWidth: ROOM_WIDTH,
+              height: fitToWidth ? ROOM_HEIGHT * fitScale : ROOM_HEIGHT,
             }}
           >
+            {/* A spacer the size of the *scaled* room: the transform below
+                doesn't affect layout, so without this the scroll extents
+                would still be the full-size room. */}
+            <div
+              style={
+                fitToWidth
+                  ? {
+                      position: 'relative',
+                      width: ROOM_WIDTH * fitScale,
+                      height: ROOM_HEIGHT * fitScale,
+                    }
+                  : { position: 'relative', width: ROOM_WIDTH, height: ROOM_HEIGHT }
+              }
+            >
             <div
               className="relative"
               style={{
-                width: 1104,
-                height: 620,
+                width: ROOM_WIDTH,
+                height: ROOM_HEIGHT,
                 ...(fitToWidth
                   ? { transform: `scale(${fitScale})`, transformOrigin: 'top left' }
                   : {}),
@@ -1143,6 +1174,7 @@ export default function PisoBoard({
                   </div>
                 );
               })}
+            </div>
             </div>
           </div>
         </div>

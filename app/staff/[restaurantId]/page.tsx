@@ -2122,21 +2122,21 @@ export default function StaffOrdersPage() {
       <div className="flex-1 min-w-0 md:ml-56">
       <header className="sticky top-0 z-30 border-b border-[#1A134D]/10 bg-[#F5F6FA]/95 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="font-display text-3xl">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="font-display text-2xl sm:text-3xl">
                 {navSection === 'tables'
                   ? t('staffPortal.nav.tables')
                   : navSection === 'orders'
                     ? t('staffPortal.nav.orders')
                     : t('staffPortal.nav.payments')}
               </h1>
-              <p className="text-sm text-[#1A134D]/50 mt-1">
+              <p className="text-[13px] sm:text-sm text-[#1A134D]/50 mt-0.5">
                 {t('staffPortal.floor.subtitle')}
               </p>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <button
                 type="button"
                 onClick={() =>
@@ -2145,7 +2145,7 @@ export default function StaffOrdersPage() {
                 className="flex items-center gap-2.5 rounded-full border border-[#1A134D]/10 bg-white px-3.5 py-2 text-[13px] shadow-sm"
               >
                 <BellIcon size={15} />
-                <span>
+                <span className="hidden sm:inline">
                   {soundEnabled
                     ? t('staffPortal.header.soundOn')
                     : t('staffPortal.header.enableSound')}
@@ -2241,7 +2241,9 @@ export default function StaffOrdersPage() {
 
         {navSection === 'tables' && (
           <section className="mb-8">
-            <div className="flex flex-wrap gap-2.5 mb-5">
+            {/* One scrolling row on a phone rather than three wrapped rows
+                eating the screen above the plan. */}
+            <div className="flex gap-2.5 mb-5 overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible">
               {(['all', 'available', 'ordering', 'preparing', 'ready', 'serving'] as const).map(
                 (option) => {
                   const active = floorFilter === option;
@@ -2252,7 +2254,7 @@ export default function StaffOrdersPage() {
                       key={option}
                       type="button"
                       onClick={() => setFloorFilter(option)}
-                      className={`flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-medium transition ${
+                      className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-medium transition ${
                         active
                           ? 'border-transparent bg-[#3f8f5f] text-white shadow-sm'
                           : 'border-[#1A134D]/10 bg-white text-[#1A134D]/75 hover:border-[#1A134D]/25'
@@ -2296,7 +2298,11 @@ export default function StaffOrdersPage() {
               </div>
 
               <div className="w-full lg:w-80 shrink-0 flex flex-col gap-4">
-                <div className="rounded-2xl border border-[#1A134D]/10 bg-white p-5 shadow-sm">
+                {/* On a phone the plan sits above this column, so the table
+                    you just tapped comes first and the activity log second;
+                    side by side on a wide screen that order flips back to
+                    match the layout the room is read in. */}
+                <div className="rounded-2xl border border-[#1A134D]/10 bg-white p-5 shadow-sm order-2 lg:order-1">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="font-display text-lg">
                       {t('staffPortal.notifications.title')}
@@ -2347,7 +2353,7 @@ export default function StaffOrdersPage() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-[#1A134D]/10 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-[#1A134D]/10 bg-white p-5 shadow-sm order-1 lg:order-2">
                   {!selectedFloorRow ? (
                     <p className="text-sm text-[#1A134D]/40 py-6 text-center">
                       {t('staffMisc.tables.boardSelectPrompt')}
