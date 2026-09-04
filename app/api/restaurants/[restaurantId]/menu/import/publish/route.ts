@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { db } from '@/src/lib/db';
 import { requireRestaurantAccess } from '@/src/lib/auth';
 import { errorResponse } from '@/src/lib/api-response';
+import { rateLimit } from '@/src/lib/rate-limit';
 
 const modifierOptionSchema = z.object({
   name: z.string().trim().min(1).max(60),
@@ -60,6 +61,18 @@ export async function POST(
       );
     }
 
+    const limited = await rateLimit(
+      `menu-import-publish:${params.restaurantId}`,
+      20,
+      10 * 60 * 1000
+    );
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: 'Too many publish attempts — please wait a few minutes and try again.' },
+        { status: 429 }
+      );
+    }
+
     const body = schema.parse(await req.json());
 
     const nonEmptyCategories = body.categories.filter(
@@ -81,6 +94,15 @@ export async function POST(
 
     let nextCategorySort = (lastCategory?.sortOrder ?? -1) + 1;
 
+    // A large imported menu (60+ items, each a sequential awaited create()
+    // over the network to Postgres, some with nested modifier/option
+    // creates) reliably exceeds Prisma's 5000ms default interactive-
+    // transaction timeout — reproduced directly: 60 items failed at ~5.04s
+    // with P2028 "Transaction already closed," rolled back cleanly (no
+    // orphaned rows) but with a bare "Internal server error" and NOTHING
+    // published, for what is an entirely ordinary menu size. Same fix
+    // already applied in app/api/public/orders/route.ts for the same
+    // underlying reason.
     const result = await db.$transaction(async (tx) => {
       let categoriesCreated = 0;
       let itemsCreated = 0;
@@ -97,8 +119,37 @@ export async function POST(
         nextCategorySort += 1;
         categoriesCreated += 1;
 
-        let itemSort = 0;
-        for (const item of category.items) {
+        // Fast path: most imported items have no modifiers, so they can go
+        // in as one bulk insert instead of N sequential round-trips — this
+        // is what made a 60-item menu take ~13s to publish (measured).
+        // sortOrder uses each item's position in the ORIGINAL list (not
+        // insertion order), so splitting into two passes below never
+        // reorders anything on the published menu.
+        const plainItems: typeof category.items = [];
+        const itemsWithModifiers: typeof category.items = [];
+        category.items.forEach((item) => {
+          (item.modifiers && item.modifiers.length > 0 ? itemsWithModifiers : plainItems).push(item);
+        });
+
+        if (plainItems.length > 0) {
+          await tx.menuItem.createMany({
+            data: plainItems.map((item) => ({
+              restaurantId: params.restaurantId,
+              categoryId: createdCategory.id,
+              name: item.name,
+              description: item.description || null,
+              priceCents: Math.round(item.price * 100),
+              allergens: item.allergens ?? [],
+              dietaryTags: item.dietaryTags ?? [],
+              sortOrder: category.items.indexOf(item),
+            })),
+          });
+          itemsCreated += plainItems.length;
+        }
+
+        // Slow path: nested modifier/option creates aren't supported by
+        // createMany, so these still go one at a time.
+        for (const item of itemsWithModifiers) {
           await tx.menuItem.create({
             data: {
               restaurantId: params.restaurantId,
@@ -108,7 +159,7 @@ export async function POST(
               priceCents: Math.round(item.price * 100),
               allergens: item.allergens ?? [],
               dietaryTags: item.dietaryTags ?? [],
-              sortOrder: itemSort,
+              sortOrder: category.items.indexOf(item),
               modifiers: {
                 create: (item.modifiers ?? []).map((modifier, modifierSort) => ({
                   name: modifier.name,
@@ -127,13 +178,12 @@ export async function POST(
             },
           });
 
-          itemSort += 1;
           itemsCreated += 1;
         }
       }
 
       return { categoriesCreated, itemsCreated };
-    });
+    }, { timeout: 60000 });
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {

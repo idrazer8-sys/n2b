@@ -242,6 +242,19 @@ Rules for categories/items:
   number. A missing price is far better than a wrong one; the manager will fill it in by hand.
 - If the photos contain no menu at all, reply with {"categories": [], "branding": {"accentColor": null, "fontPairing": null}}.
 - Do not invent items that are not in the photos.
+- Do not invent a "description" when the menu shows none — leave it null. A restaurant naming a
+  dish (e.g. "Pizza de la casa", "Menú del día") with nothing else printed is NOT an invitation
+  to write plausible-sounding filler text; null is the correct, honest answer.
+
+Rules for "allergens" — list only what the source actually supports:
+- The menu explicitly states it (a legend, an icon, the word "gluten"/"lácteos"/etc. printed next
+  to the item), OR
+- A named ingredient unambiguously contains it (e.g. "pan" or "harina" named in the ingredients
+  implies gluten; "queso" or "nata" implies dairy).
+Never guess an allergen from a dish's category, name, or cuisine alone (e.g. do not assume a
+pasta dish contains gluten unless gluten-bearing ingredients are actually named or stated). When
+the source gives no real basis, leave "allergens" empty for that item — an omitted allergen the
+manager can add during review is far safer than a wrong one presented as fact.
 
 Rules for "modifiers" — options a customer chooses when ordering the item, printed near it on
 the menu (e.g. "Extra queso +1,50€", "Elige salsa", "Con patatas +2€", "Sin cebolla",

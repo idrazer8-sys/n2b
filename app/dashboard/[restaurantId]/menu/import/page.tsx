@@ -56,6 +56,19 @@ type BrandingSuggestion = {
 const MAX_PHOTOS = 12;
 const MAX_DIMENSION = 1600;
 
+// Accent/case-insensitive so "jamon" and "jamón" — a routine OCR/spelling
+// variance, not a genuinely different dish — are recognized as the same
+// name for duplicate detection below. Plain toLowerCase() alone missed
+// this (found via testing): "Croquetas de jamon" and "Croquetas de jamón"
+// hashed to different keys and neither got flagged.
+function normalizeItemName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 type ResizeMessages = {
   couldNotReadFile: (name: string) => string;
   couldNotDecodeFile: (name: string) => string;
@@ -153,7 +166,7 @@ export default function MenuImportPage() {
           });
         }
 
-        const key = item.name.trim().toLowerCase();
+        const key = normalizeItemName(item.name);
         if (key) {
           const firstIndex = seenNames.get(key);
           if (firstIndex !== undefined) {
