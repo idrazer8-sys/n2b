@@ -1,0 +1,46 @@
+name: CI
+
+"on":
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  # Static checks first — these need no secrets and no database, so they
+  # always run and fail fast on a real type/lint error.
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+
+  # Most of this suite is integration tests against a real Postgres
+  # database (see tests/setup.ts / README.md) — this job only runs once
+  # DATABASE_URL/DIRECT_URL repo secrets are configured. Point those at a
+  # DEDICATED test database, never at the production one: these tests
+  # create and delete real rows.
+  test:
+    runs-on: ubuntu-latest
+    if: ${{ vars.CI_TESTS_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm test
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.TEST_DIRECT_URL }}
+          AUTH_SECRET: ${{ secrets.TEST_AUTH_SECRET }}
+          CUSTOMER_SESSION_SECRET: ${{ secrets.TEST_CUSTOMER_SESSION_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.TEST_STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.TEST_STRIPE_WEBHOOK_SECRET }}

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { db } from '@/src/lib/db';
 import { requireRestaurantAccess } from '@/src/lib/auth';
 import { errorResponse } from '@/src/lib/api-response';
+import { rateLimit } from '@/src/lib/rate-limit';
 import {
   getSupportAssistantReply,
   AiNotConfiguredError,
@@ -121,6 +122,22 @@ export async function POST(
       return NextResponse.json(
         { error: access.message },
         { status: access.status }
+      );
+    }
+
+    // Every message here triggers a real Gemini call — without this, a
+    // compromised or careless staff account could drive unbounded AI cost.
+    // Keyed by restaurant, matching the menu-import endpoints' convention.
+    const limited = await rateLimit(
+      `support-chat:${params.restaurantId}`,
+      30,
+      10 * 60 * 1000
+    );
+
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: 'Too many messages — please wait a few minutes and try again.' },
+        { status: 429 }
       );
     }
 
