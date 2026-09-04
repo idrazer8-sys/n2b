@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
+import { FONT_PAIRINGS, FONT_PAIRING_KEYS, isFontPairingKey, googleFontsHref, type FontPairingKey } from '@/src/lib/fontPairings';
 
 type Settings = {
   id: string;
@@ -16,6 +17,7 @@ type Settings = {
   currency: string;
   timezone: string;
   brandPrimaryColor: string;
+  brandFontPairing: string | null;
   isOpen: boolean;
   isActive: boolean;
   googleReviewUrl: string | null;
@@ -64,6 +66,12 @@ export default function SettingsPage() {
 
   const [waiterSla, setWaiterSla] =
     useState('');
+
+  const [brandPrimaryColor, setBrandPrimaryColor] =
+    useState('#111111');
+
+  const [brandFontPairing, setBrandFontPairing] =
+    useState<'default' | FontPairingKey>('default');
 
   const [loading, setLoading] =
     useState(true);
@@ -126,6 +134,16 @@ export default function SettingsPage() {
             ? String(data.waiterSlaSeconds)
             : ''
         );
+
+        setBrandPrimaryColor(
+          data.brandPrimaryColor || '#111111'
+        );
+
+        setBrandFontPairing(
+          isFontPairingKey(data.brandFontPairing)
+            ? data.brandFontPairing
+            : 'default'
+        );
       } catch (err) {
         setError(
           err instanceof Error
@@ -141,6 +159,22 @@ export default function SettingsPage() {
       loadSettings();
     }
   }, [restaurantId]);
+
+  // Loads the currently-selected pairing's Google Font so the live sample
+  // below the picker actually renders in that typeface.
+  useEffect(() => {
+    if (!isFontPairingKey(brandFontPairing)) return;
+
+    if (document.querySelector(`link[data-font-pairing="${brandFontPairing}"]`)) {
+      return;
+    }
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = googleFontsHref(brandFontPairing);
+    link.dataset.fontPairing = brandFontPairing;
+    document.head.appendChild(link);
+  }, [brandFontPairing]);
 
   async function saveSettings() {
     try {
@@ -171,6 +205,11 @@ export default function SettingsPage() {
         waiterSla === ''
           ? null
           : Number(waiterSla);
+
+      body.brandPrimaryColor = brandPrimaryColor;
+
+      body.brandFontPairing =
+        brandFontPairing === 'default' ? null : brandFontPairing;
 
       const response = await fetch(
         `/api/restaurants/${restaurantId}/settings`,
@@ -206,6 +245,10 @@ export default function SettingsPage() {
                 data.waiterSlaSeconds,
               totalServiceSlaSeconds:
                 data.totalServiceSlaSeconds,
+              brandPrimaryColor:
+                data.brandPrimaryColor,
+              brandFontPairing:
+                data.brandFontPairing,
             }
           : current
       );
@@ -420,6 +463,80 @@ export default function SettingsPage() {
           </p>
         </section>
       </div>
+
+      <section className="border border-line rounded-xl p-5">
+        <h2 className={cardHeadingClass}>
+          {t('dashboardCore.settings.brandingHeading')}
+        </h2>
+
+        <p className="text-xs text-ink/50 -mt-3 mb-4">
+          {t('dashboardCore.settings.brandingSubtitle')}
+        </p>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label className={labelClass}>
+              {t('dashboardCore.settings.brandColorLabel')}
+            </label>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={brandPrimaryColor}
+                onChange={(e) => setBrandPrimaryColor(e.target.value)}
+                className="h-9 w-9 border border-line rounded-md p-0.5 shrink-0"
+              />
+
+              <input
+                value={brandPrimaryColor}
+                onChange={(e) => setBrandPrimaryColor(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>
+              {t('dashboardCore.settings.brandFontLabel')}
+            </label>
+
+            <select
+              value={brandFontPairing}
+              onChange={(e) =>
+                setBrandFontPairing(e.target.value as 'default' | FontPairingKey)
+              }
+              className={inputClass}
+            >
+              <option value="default">
+                {t('dashboardCore.settings.brandFontDefault')}
+              </option>
+              {FONT_PAIRING_KEYS.map((key) => (
+                <option key={key} value={key}>
+                  {t(
+                    `dashboardCore.settings.brandFont${key
+                      .split('-')
+                      .map((part) => part[0].toUpperCase() + part.slice(1))
+                      .join('')}`
+                  )}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div
+          className="mt-4 border border-line rounded-lg p-4"
+          style={{
+            fontFamily: isFontPairingKey(brandFontPairing)
+              ? `'${FONT_PAIRINGS[brandFontPairing].display}', serif`
+              : undefined,
+          }}
+        >
+          <p className="text-2xl" style={{ color: brandPrimaryColor }}>
+            {t('dashboardCore.settings.brandFontSample')}
+          </p>
+        </div>
+      </section>
 
       <section className="border border-line rounded-xl p-5">
         <h2 className={cardHeadingClass}>

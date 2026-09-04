@@ -71,6 +71,11 @@ model Restaurant {
   timezone               String            @default("Europe/Madrid")
   openingHours           Json?
   brandPrimaryColor      String            @default("#111111")
+  // One of the keys in src/lib/fontPairings.ts, or null to use the
+  // platform default (Fraunces/Inter). Validated against that fixed list
+  // server-side — never free text, since an arbitrary Google Fonts family
+  // name could not exist or render badly at menu sizes.
+  brandFontPairing       String?
   isOpen                 Boolean           @default(true)
   isActive               Boolean           @default(true)
   allowPayAtRestaurant   Boolean           @default(true)

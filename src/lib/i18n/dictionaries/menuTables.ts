@@ -101,6 +101,11 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.noItemsInCategory': 'No hay artículos en esta categoría.',
     'menuTables.import.publishing': 'Publicando...',
     'menuTables.import.publishMenu': 'Publicar menú',
+    'menuTables.import.brandingHeading': 'Estética sugerida',
+    'menuTables.import.applyBranding': 'Aplicar a mi restaurante',
+    'menuTables.import.brandingFontSample': 'Tu Restaurante',
+    'menuTables.import.brandingHint':
+      'La IA sugirió estos visuales a partir de las fotos. Puedes desmarcar la casilla para no aplicarlos, o cambiarlos luego en Ajustes.',
 
     // tables/page.tsx
     'menuTables.tables.justNow': 'justo ahora',
@@ -255,6 +260,11 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.noItemsInCategory': 'No items in this category.',
     'menuTables.import.publishing': 'Publishing...',
     'menuTables.import.publishMenu': 'Publish menu',
+    'menuTables.import.brandingHeading': 'Suggested look',
+    'menuTables.import.applyBranding': 'Apply to my restaurant',
+    'menuTables.import.brandingFontSample': 'Your Restaurant',
+    'menuTables.import.brandingHint':
+      "The AI suggested this look from the photos. Uncheck the box to skip it, or change it later in Settings.",
 
     // tables/page.tsx
     'menuTables.tables.justNow': 'just now',
@@ -418,6 +428,11 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.noItemsInCategory': 'Não há artigos nesta categoria.',
     'menuTables.import.publishing': 'A publicar...',
     'menuTables.import.publishMenu': 'Publicar menu',
+    'menuTables.import.brandingHeading': 'Estética sugerida',
+    'menuTables.import.applyBranding': 'Aplicar ao meu restaurante',
+    'menuTables.import.brandingFontSample': 'O Seu Restaurante',
+    'menuTables.import.brandingHint':
+      'A IA sugeriu esta estética a partir das fotos. Desmarque a caixa para não aplicar, ou altere mais tarde em Definições.',
 
     // tables/page.tsx
     'menuTables.tables.justNow': 'agora mesmo',
@@ -588,6 +603,11 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.noItemsInCategory': 'Keine Artikel in dieser Kategorie.',
     'menuTables.import.publishing': 'Wird veröffentlicht...',
     'menuTables.import.publishMenu': 'Speisekarte veröffentlichen',
+    'menuTables.import.brandingHeading': 'Vorgeschlagenes Erscheinungsbild',
+    'menuTables.import.applyBranding': 'Auf mein Restaurant anwenden',
+    'menuTables.import.brandingFontSample': 'Dein Restaurant',
+    'menuTables.import.brandingHint':
+      'Die KI hat dieses Erscheinungsbild anhand der Fotos vorgeschlagen. Entferne das Häkchen, um es nicht zu übernehmen, oder ändere es später in den Einstellungen.',
 
     // tables/page.tsx
     'menuTables.tables.justNow': 'gerade eben',
@@ -757,6 +777,11 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.noItemsInCategory': 'Aucun article dans cette catégorie.',
     'menuTables.import.publishing': 'Publication...',
     'menuTables.import.publishMenu': 'Publier le menu',
+    'menuTables.import.brandingHeading': 'Esthétique suggérée',
+    'menuTables.import.applyBranding': 'Appliquer à mon restaurant',
+    'menuTables.import.brandingFontSample': 'Votre Restaurant',
+    'menuTables.import.brandingHint':
+      "L'IA a suggéré cette esthétique à partir des photos. Décochez la case pour ne pas l'appliquer, ou changez-la plus tard dans les Paramètres.",
 
     // tables/page.tsx
     'menuTables.tables.justNow': "à l'instant",

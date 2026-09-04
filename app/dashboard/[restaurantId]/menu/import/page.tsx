@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
+import { FONT_PAIRINGS, isFontPairingKey, googleFontsHref, type FontPairingKey } from '@/src/lib/fontPairings';
 
 type DraftItem = {
   name: string;
@@ -17,6 +18,11 @@ type DraftCategory = {
 };
 
 type Step = 'upload' | 'reviewing';
+
+type BrandingSuggestion = {
+  accentColor: string | null;
+  fontPairing: FontPairingKey | null;
+};
 
 const MAX_PHOTOS = 12;
 const MAX_DIMENSION = 1600;
@@ -86,6 +92,23 @@ export default function MenuImportPage() {
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftCategory[]>([]);
+  const [branding, setBranding] = useState<BrandingSuggestion | null>(null);
+  const [applyBranding, setApplyBranding] = useState(true);
+
+  // Loads the suggested font pairing's Google Font so the preview card
+  // actually renders in that typeface, not just names it.
+  useEffect(() => {
+    const pairing = branding?.fontPairing;
+    if (!isFontPairingKey(pairing)) return;
+
+    if (document.querySelector(`link[data-font-pairing="${pairing}"]`)) return;
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = googleFontsHref(pairing);
+    link.dataset.fontPairing = pairing;
+    document.head.appendChild(link);
+  }, [branding?.fontPairing]);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -162,6 +185,18 @@ export default function MenuImportPage() {
         return;
       }
 
+      const suggestion: BrandingSuggestion = {
+        accentColor:
+          typeof json.branding?.accentColor === 'string' ? json.branding.accentColor : null,
+        fontPairing: isFontPairingKey(json.branding?.fontPairing)
+          ? json.branding.fontPairing
+          : null,
+      };
+
+      setBranding(
+        suggestion.accentColor || suggestion.fontPairing ? suggestion : null
+      );
+      setApplyBranding(true);
       setDraft(categories);
       setStep('reviewing');
     } catch (err) {
@@ -245,6 +280,21 @@ export default function MenuImportPage() {
         throw new Error(
           json.error ?? t('menuTables.import.couldNotPublishMenu')
         );
+      }
+
+      // Best-effort: a rejected branding update shouldn't block the menu
+      // itself from having published — the manager can still set it by
+      // hand in Settings.
+      if (applyBranding && branding && (branding.accentColor || branding.fontPairing)) {
+        await fetch(`/api/restaurants/${restaurantId}/settings`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...(branding.accentColor ? { brandPrimaryColor: branding.accentColor } : {}),
+            ...(branding.fontPairing ? { brandFontPairing: branding.fontPairing } : {}),
+          }),
+        }).catch(() => {});
       }
 
       router.push(`/dashboard/${restaurantId}/menu`);
@@ -411,6 +461,48 @@ export default function MenuImportPage() {
               </section>
             ))}
           </div>
+
+          {branding && (branding.accentColor || branding.fontPairing) && (
+            <div className="mt-8 border border-line rounded-2xl p-5">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <h3 className="text-sm font-medium uppercase tracking-[0.1em] text-ink/60">
+                  {t('menuTables.import.brandingHeading')}
+                </h3>
+
+                <label className="flex items-center gap-2 text-xs text-ink/60">
+                  <input
+                    type="checkbox"
+                    checked={applyBranding}
+                    onChange={(event) => setApplyBranding(event.target.checked)}
+                  />
+                  {t('menuTables.import.applyBranding')}
+                </label>
+              </div>
+
+              <div className="flex items-center gap-5">
+                {branding.accentColor && (
+                  <span
+                    className="h-12 w-12 rounded-full border border-line shrink-0"
+                    style={{ background: branding.accentColor }}
+                    title={branding.accentColor}
+                  />
+                )}
+
+                {branding.fontPairing && (
+                  <p
+                    className="text-3xl leading-tight"
+                    style={{ fontFamily: `'${FONT_PAIRINGS[branding.fontPairing].display}', serif` }}
+                  >
+                    {t('menuTables.import.brandingFontSample')}
+                  </p>
+                )}
+              </div>
+
+              <p className="mt-3 text-xs text-ink/40">
+                {t('menuTables.import.brandingHint')}
+              </p>
+            </div>
+          )}
 
           <div className="mt-8 flex items-center gap-3">
             <button

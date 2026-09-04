@@ -83,6 +83,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       currency: restaurant.currency,
       isOpen: restaurant.isOpen,
       brandPrimaryColor: restaurant.brandPrimaryColor,
+      brandFontPairing: restaurant.brandFontPairing,
     },
     table: { id: table.id, label: table.label },
     session: { id: customerSession.id, partySize: customerSession.partySize },

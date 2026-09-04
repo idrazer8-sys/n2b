@@ -5,6 +5,23 @@ import { formatCents } from '@/src/lib/format';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import AllergenIconRow from '@/components/AllergenIconRow';
+import { FONT_PAIRINGS, isFontPairingKey, googleFontsHref } from '@/src/lib/fontPairings';
+
+// Converts a #rgb/#rrggbb hex color to an rgba() string — used for the few
+// spots that need a translucent tint of the restaurant's accent color
+// (e.g. a selected option's background wash). Tailwind's opacity modifier
+// (bg-[...]/5) can't apply to an arbitrary CSS var() value, since it needs
+// to know the underlying channels to blend — this does that blending
+// directly instead.
+function withAlpha(hex: string, alpha: number): string {
+  const clean = hex.replace('#', '');
+  const full = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return hex;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 type ModifierOption = {
   id: string;
@@ -46,6 +63,7 @@ type MenuResponse = {
     currency: string;
     isOpen: boolean;
     brandPrimaryColor: string;
+    brandFontPairing: string | null;
   };
   table: {
     id: string;
@@ -164,6 +182,26 @@ export default function CustomerMenu({
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, token, dessertOnly]);
+
+  // Loads the restaurant's chosen Google Font pairing, if any — a plain
+  // <link> in the document head, injected once per pairing (deduped by a
+  // data attribute) rather than on every render. Restaurants with no
+  // pairing set (brandFontPairing: null) never trigger this, so they keep
+  // rendering with the platform default (Fraunces/Inter) exactly as before.
+  useEffect(() => {
+    const pairing = data?.restaurant.brandFontPairing;
+    if (!isFontPairingKey(pairing)) return;
+
+    if (document.querySelector(`link[data-font-pairing="${pairing}"]`)) {
+      return;
+    }
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = googleFontsHref(pairing);
+    link.dataset.fontPairing = pairing;
+    document.head.appendChild(link);
+  }, [data?.restaurant.brandFontPairing]);
 
   const cartTotalCents = useMemo(
     () =>
@@ -324,9 +362,28 @@ export default function CustomerMenu({
     );
   }
 
+  const accent = data.restaurant.brandPrimaryColor || '#7b2d26';
+
+  const fontPairingKey = isFontPairingKey(data.restaurant.brandFontPairing)
+    ? data.restaurant.brandFontPairing
+    : null;
+
+  const brandStyle = {
+    '--accent': accent,
+    ...(fontPairingKey
+      ? {
+          '--font-display': `'${FONT_PAIRINGS[fontPairingKey].display}', serif`,
+          '--font-body': `'${FONT_PAIRINGS[fontPairingKey].body}', sans-serif`,
+        }
+      : {}),
+  } as React.CSSProperties;
+
   if (partySize === null) {
     return (
-      <div className="min-h-screen bg-[#f7f3ec] text-[#29251f] flex items-center justify-center px-6">
+      <div
+        className="min-h-screen bg-[#f7f3ec] text-[#29251f] font-body flex items-center justify-center px-6"
+        style={brandStyle}
+      >
         <div className="w-full max-w-xs text-center">
           {data.restaurant.logoUrl ? (
             <img
@@ -335,8 +392,8 @@ export default function CustomerMenu({
               className="mx-auto h-14 w-14 object-contain mb-5"
             />
           ) : (
-            <div className="mx-auto mb-5 text-[#7b2d26] text-3xl" aria-hidden="true">
-              
+            <div className="mx-auto mb-5 text-[var(--accent)] text-3xl" aria-hidden="true">
+
             </div>
           )}
 
@@ -394,7 +451,7 @@ export default function CustomerMenu({
             type="button"
             onClick={() => void confirmPartySize()}
             disabled={confirmingPartySize}
-            className="w-full bg-[#7b2d26] text-white rounded-lg py-3 text-sm font-medium tracking-wide disabled:opacity-60"
+            className="w-full bg-[var(--accent)] text-white rounded-lg py-3 text-sm font-medium tracking-wide disabled:opacity-60"
           >
             {t('customerFlow.partySize.confirm')}
           </button>
@@ -402,8 +459,6 @@ export default function CustomerMenu({
       </div>
     );
   }
-
-  const accent = data.restaurant.brandPrimaryColor || '#7b2d26';
 
   const isDessertOnly = dessertOnly || dessertMode;
 
@@ -417,12 +472,8 @@ export default function CustomerMenu({
 
   return (
     <div
-      className="min-h-screen bg-[#f7f3ec] text-[#29251f] pb-32"
-      style={
-        {
-          '--accent': accent,
-        } as React.CSSProperties
-      }
+      className="min-h-screen bg-[#f7f3ec] text-[#29251f] font-body pb-32"
+      style={brandStyle}
     >
       <header className="bg-[#f7f3ec] border-b border-[#29251f]/10">
         <div className="max-w-2xl mx-auto px-5 pt-5">
@@ -440,7 +491,7 @@ export default function CustomerMenu({
                 className="mx-auto h-16 w-16 object-contain mb-4"
               />
             ) : (
-              <div className="mx-auto mb-4 text-[#7b2d26] text-3xl" aria-hidden="true">
+              <div className="mx-auto mb-4 text-[var(--accent)] text-3xl" aria-hidden="true">
                 
               </div>
             )}
@@ -455,7 +506,7 @@ export default function CustomerMenu({
 
             <div className="mt-4 flex items-center justify-center gap-3 text-xs uppercase tracking-[0.16em] text-[#29251f]/55">
               <span>{data.table.label}</span>
-              <span className="text-[#7b2d26]">-</span>
+              <span className="text-[var(--accent)]">-</span>
               <span>
                 {data.restaurant.isOpen ? t('customerFlow.menu.open') : t('customerFlow.menu.closed')}
               </span>
@@ -486,14 +537,14 @@ export default function CustomerMenu({
                 }}
                 className={`relative whitespace-nowrap pb-4 text-xs uppercase tracking-[0.16em] transition-colors ${
                   activeCategory === category.id
-                    ? 'text-[#7b2d26]'
+                    ? 'text-[var(--accent)]'
                     : 'text-[#29251f]/45'
                 }`}
               >
                 {category.name}
 
                 {activeCategory === category.id && (
-                  <span className="absolute bottom-0 left-1/2 h-px w-8 -translate-x-1/2 bg-[#7b2d26]" />
+                  <span className="absolute bottom-0 left-1/2 h-px w-8 -translate-x-1/2 bg-[var(--accent)]" />
                 )}
               </button>
             ))}
@@ -528,7 +579,7 @@ export default function CustomerMenu({
                   className="group w-full text-left border-b border-[#29251f]/10 py-5 transition-colors hover:bg-[#29251f]/[0.025]"
                 >
                   <div className="flex items-baseline gap-3">
-                    <span className="font-display text-xl group-hover:text-[#7b2d26] transition-colors">
+                    <span className="font-display text-xl group-hover:text-[var(--accent)] transition-colors">
                       {item.name}
                     </span>
 
@@ -798,14 +849,13 @@ function ItemModal({
                     <label
                       key={option.id}
                       className={`flex cursor-pointer items-center justify-between border px-4 py-3 transition-colors ${
-                        checked
-                          ? 'border-[#7b2d26] bg-[#7b2d26]/5'
-                          : 'border-[#29251f]/10'
+                        checked ? 'border-[var(--accent)]' : 'border-[#29251f]/10'
                       } ${
                         !option.isAvailable
                           ? 'pointer-events-none opacity-40'
                           : ''
                       }`}
+                      style={checked ? { backgroundColor: withAlpha(accent, 0.05) } : undefined}
                     >
                       <span className="flex items-center gap-3 text-sm">
                         <input
@@ -857,7 +907,7 @@ function ItemModal({
               }
               placeholder={t('customerFlow.item.notesPlaceholder')}
               rows={3}
-              className="mt-3 w-full resize-none border border-[#29251f]/15 bg-transparent px-4 py-3 text-sm outline-none focus:border-[#7b2d26]"
+              className="mt-3 w-full resize-none border border-[#29251f]/15 bg-transparent px-4 py-3 text-sm outline-none focus:border-[var(--accent)]"
             />
           </div>
 

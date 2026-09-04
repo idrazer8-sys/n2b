@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import { db } from '@/src/lib/db';
 import { requireRestaurantAccess } from '@/src/lib/auth';
+import { FONT_PAIRING_KEYS } from '@/src/lib/fontPairings';
 
 const schema = z.object({
   googleReviewUrl: z.string().url().nullable().optional(),
@@ -11,6 +12,11 @@ const schema = z.object({
   allowPayAtRestaurant: z.boolean().optional(),
   reservationBufferMinutes: z.number().int().min(0).max(240).optional(),
   isOpen: z.boolean().optional(),
+  // #rgb or #rrggbb — never trust arbitrary CSS (e.g. `javascript:...` or a
+  // gradient) since this value is later interpolated into inline styles.
+  brandPrimaryColor: z.string().regex(/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/).optional(),
+  // Closed list, not free text — see FONT_PAIRING_KEYS in fontPairings.ts.
+  brandFontPairing: z.enum(FONT_PAIRING_KEYS as [string, ...string[]]).nullable().optional(),
 });
 
 type RouteContext = {
@@ -50,6 +56,7 @@ export async function GET(
         currency: true,
         timezone: true,
         brandPrimaryColor: true,
+        brandFontPairing: true,
         isOpen: true,
         isActive: true,
         googleReviewUrl: true,
@@ -170,6 +177,12 @@ export async function PATCH(
           ? { reservationBufferMinutes: body.reservationBufferMinutes }
           : {}),
         ...(body.isOpen !== undefined ? { isOpen: body.isOpen } : {}),
+        ...(body.brandPrimaryColor !== undefined
+          ? { brandPrimaryColor: body.brandPrimaryColor }
+          : {}),
+        ...(body.brandFontPairing !== undefined
+          ? { brandFontPairing: body.brandFontPairing }
+          : {}),
         totalServiceSlaSeconds: total,
       },
       select: {
@@ -184,6 +197,7 @@ export async function PATCH(
         currency: true,
         timezone: true,
         brandPrimaryColor: true,
+        brandFontPairing: true,
         isOpen: true,
         isActive: true,
         googleReviewUrl: true,

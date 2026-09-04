@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { z } from 'zod';
+import { FONT_PAIRING_KEYS } from './fontPairings';
 
 /*
  * Thin wrapper around the Google Gemini API (generativelanguage.googleapis.com)
@@ -150,8 +151,25 @@ export const extractedMenuCategorySchema = z.object({
   items: z.array(extractedMenuItemSchema).max(200),
 });
 
+// Closed list — see the FONT_PAIRINGS registry comment in fontPairings.ts
+// for why this is never free text. Gemini picks the closest-matching key;
+// it never invents a font name of its own.
+const brandingSchema = z
+  .object({
+    accentColor: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .nullable()
+      .optional()
+      .default(null),
+    fontPairing: z.enum(FONT_PAIRING_KEYS as [string, ...string[]]).nullable().optional().default(null),
+  })
+  .optional()
+  .default({ accentColor: null, fontPairing: null });
+
 export const extractedMenuSchema = z.object({
   categories: z.array(extractedMenuCategorySchema).max(60),
+  branding: brandingSchema,
 });
 
 export type ExtractedMenu = z.infer<typeof extractedMenuSchema>;
@@ -178,15 +196,36 @@ Reply with ONLY a single JSON object matching this exact shape:
         }
       ]
     }
-  ]
+  ],
+  "branding": {
+    "accentColor": "#rrggbb or null",
+    "fontPairing": "one of: elegant-script | modern-serif | rustic-handwritten | bold-modern, or null"
+  }
 }
 
-Rules:
+Rules for categories/items:
 - "price" is a plain decimal number in the menu's currency major unit (e.g. 12.5 for 12,50€), never a string, never including a currency symbol.
 - Keep category and item names in the SAME language as the source photos.
 - If a price is unreadable, make your best reasonable estimate rather than omitting the item.
-- If the photos contain no menu at all, reply with {"categories": []}.
-- Do not invent items that are not in the photos.`;
+- If the photos contain no menu at all, reply with {"categories": [], "branding": {"accentColor": null, "fontPairing": null}}.
+- Do not invent items that are not in the photos.
+
+Rules for "branding" — a best-effort guess at the restaurant's visual identity, used only to
+suggest a look for their online menu (the manager reviews and can reject it):
+- "accentColor": pick ONE hex color that captures the menu's dominant brand color — usually
+  whatever color the headings, borders, or accents are printed in. If the photo is plain black
+  text on white/cream paper with no real color identity, return null rather than guessing.
+- "fontPairing": pick the closest match to the photographed menu's heading typography from
+  exactly these four styles, or null if none fit reasonably:
+  - "elegant-script": flowing cursive/script headings (dish names, section titles) — typical of
+    fine dining, Italian, French, or romantic-restaurant branding.
+  - "modern-serif": a refined, editorial serif for headings — upscale, contemporary, minimalist.
+  - "rustic-handwritten": a casual handwritten/marker-style heading font — trattorias, cafes,
+    bistros, taverns with a warm, informal feel.
+  - "bold-modern": a tall condensed sans-serif (like a poster/sign font) for headings — bars,
+    grills, contemporary fast-casual.
+  If the photo's headings are in a plain, unremarkable font (e.g. default sans-serif), return
+  null — do not force a match.`;
 
   const parts: Part[] = [
     ...images.map((image): Part => ({
@@ -196,7 +235,7 @@ Rules:
       },
     })),
     {
-      text: 'Extract the full menu from these photos as the JSON object described in your instructions.',
+      text: 'Extract the full menu and suggested branding from these photos as the JSON object described in your instructions.',
     },
   ];
 

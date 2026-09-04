@@ -77,6 +77,17 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.googleReviewUrlLabel': 'URL de reseña de Google',
     'dashboardCore.settings.googleReviewHelp':
       'Este enlace podrá usarse más adelante en el flujo de reseñas/NFC tras un pedido completado.',
+    'dashboardCore.settings.brandingHeading': 'Marca y estética',
+    'dashboardCore.settings.brandingSubtitle':
+      'Cómo se ve tu carta online para los clientes.',
+    'dashboardCore.settings.brandColorLabel': 'Color de acento',
+    'dashboardCore.settings.brandFontLabel': 'Tipografía',
+    'dashboardCore.settings.brandFontDefault': 'Por defecto (N2B)',
+    'dashboardCore.settings.brandFontElegantScript': 'Elegante y clásico',
+    'dashboardCore.settings.brandFontModernSerif': 'Serif moderno',
+    'dashboardCore.settings.brandFontRusticHandwritten': 'Rústico y artesanal',
+    'dashboardCore.settings.brandFontBoldModern': 'Moderno y atrevido',
+    'dashboardCore.settings.brandFontSample': 'Tu Restaurante',
     'dashboardCore.settings.slaHeading': 'Acuerdos de nivel de servicio',
     'dashboardCore.settings.slaSubtitle':
       'Configura los objetivos que usa la analítica para identificar un servicio lento.',
@@ -243,6 +254,17 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.googleReviewUrlLabel': 'Google review URL',
     'dashboardCore.settings.googleReviewHelp':
       'This link can later be used by the review/NFC flow after a completed order.',
+    'dashboardCore.settings.brandingHeading': 'Branding & look',
+    'dashboardCore.settings.brandingSubtitle':
+      'How your online menu looks to customers.',
+    'dashboardCore.settings.brandColorLabel': 'Accent color',
+    'dashboardCore.settings.brandFontLabel': 'Typography',
+    'dashboardCore.settings.brandFontDefault': 'Default (N2B)',
+    'dashboardCore.settings.brandFontElegantScript': 'Elegant & classic',
+    'dashboardCore.settings.brandFontModernSerif': 'Modern serif',
+    'dashboardCore.settings.brandFontRusticHandwritten': 'Rustic & handwritten',
+    'dashboardCore.settings.brandFontBoldModern': 'Bold & modern',
+    'dashboardCore.settings.brandFontSample': 'Your Restaurant',
     'dashboardCore.settings.slaHeading': 'Service Level Agreements',
     'dashboardCore.settings.slaSubtitle':
       'Configure the targets used by Analytics to identify slow service.',
@@ -410,6 +432,17 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
       'URL de avaliação do Google',
     'dashboardCore.settings.googleReviewHelp':
       'Este link poderá ser usado mais tarde no fluxo de avaliação/NFC após um pedido concluído.',
+    'dashboardCore.settings.brandingHeading': 'Marca e estética',
+    'dashboardCore.settings.brandingSubtitle':
+      'Como o seu menu online é visto pelos clientes.',
+    'dashboardCore.settings.brandColorLabel': 'Cor de destaque',
+    'dashboardCore.settings.brandFontLabel': 'Tipografia',
+    'dashboardCore.settings.brandFontDefault': 'Padrão (N2B)',
+    'dashboardCore.settings.brandFontElegantScript': 'Elegante e clássico',
+    'dashboardCore.settings.brandFontModernSerif': 'Serifa moderna',
+    'dashboardCore.settings.brandFontRusticHandwritten': 'Rústico e artesanal',
+    'dashboardCore.settings.brandFontBoldModern': 'Moderno e arrojado',
+    'dashboardCore.settings.brandFontSample': 'O Seu Restaurante',
     'dashboardCore.settings.slaHeading': 'Acordos de nível de serviço',
     'dashboardCore.settings.slaSubtitle':
       'Configure os objetivos usados pelas Análises para identificar um serviço lento.',
@@ -586,6 +619,17 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.googleReviewUrlLabel': 'Google-Bewertungs-URL',
     'dashboardCore.settings.googleReviewHelp':
       'Dieser Link kann später im Bewertungs-/NFC-Ablauf nach einer abgeschlossenen Bestellung verwendet werden.',
+    'dashboardCore.settings.brandingHeading': 'Marke & Erscheinungsbild',
+    'dashboardCore.settings.brandingSubtitle':
+      'So sieht deine Online-Speisekarte für Kunden aus.',
+    'dashboardCore.settings.brandColorLabel': 'Akzentfarbe',
+    'dashboardCore.settings.brandFontLabel': 'Typografie',
+    'dashboardCore.settings.brandFontDefault': 'Standard (N2B)',
+    'dashboardCore.settings.brandFontElegantScript': 'Elegant & klassisch',
+    'dashboardCore.settings.brandFontModernSerif': 'Moderne Serife',
+    'dashboardCore.settings.brandFontRusticHandwritten': 'Rustikal & handschriftlich',
+    'dashboardCore.settings.brandFontBoldModern': 'Kräftig & modern',
+    'dashboardCore.settings.brandFontSample': 'Dein Restaurant',
     'dashboardCore.settings.slaHeading': 'Service-Level-Agreements',
     'dashboardCore.settings.slaSubtitle':
       'Konfiguriere die Ziele, die von den Analysen verwendet werden, um langsamen Service zu erkennen.',
@@ -758,6 +802,17 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.googleReviewUrlLabel': "URL de l'avis Google",
     'dashboardCore.settings.googleReviewHelp':
       "Ce lien pourra ensuite être utilisé dans le flux d'avis/NFC après une commande terminée.",
+    'dashboardCore.settings.brandingHeading': 'Marque & esthétique',
+    'dashboardCore.settings.brandingSubtitle':
+      'L\'apparence de votre menu en ligne pour les clients.',
+    'dashboardCore.settings.brandColorLabel': "Couleur d'accent",
+    'dashboardCore.settings.brandFontLabel': 'Typographie',
+    'dashboardCore.settings.brandFontDefault': 'Par défaut (N2B)',
+    'dashboardCore.settings.brandFontElegantScript': 'Élégant et classique',
+    'dashboardCore.settings.brandFontModernSerif': 'Serif moderne',
+    'dashboardCore.settings.brandFontRusticHandwritten': 'Rustique et manuscrit',
+    'dashboardCore.settings.brandFontBoldModern': 'Audacieux et moderne',
+    'dashboardCore.settings.brandFontSample': 'Votre Restaurant',
     'dashboardCore.settings.slaHeading': 'Accords de niveau de service',
     'dashboardCore.settings.slaSubtitle':
       'Configurez les objectifs utilisés par les statistiques pour identifier un service lent.',
