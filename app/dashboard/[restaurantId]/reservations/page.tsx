@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
+import ReservationCalendar from '@/components/reservations/ReservationCalendar';
 
 type Table = {
   id: string;
@@ -67,6 +68,7 @@ export default function ReservationsPage({
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  const [view, setView] = useState<'list' | 'calendar'>('calendar');
   const [bufferMinutes, setBufferMinutes] = useState<number | null>(null);
   const [bufferDraft, setBufferDraft] = useState('15');
   const [savingBuffer, setSavingBuffer] = useState(false);
@@ -224,16 +226,43 @@ export default function ReservationsPage({
 
   return (
     <div className="pb-12">
-      <div className="mb-6">
-        <p className="text-[10px] uppercase tracking-[0.15em] text-ink/40">
-          {t('reservations.eyebrow')}
-        </p>
-        <h1 className="font-display text-3xl mt-1">
-          {t('reservations.title')}
-        </h1>
-        <p className="text-sm text-ink/50 mt-2">
-          {t('reservations.subtitle')}
-        </p>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.15em] text-ink/40">
+            {t('reservations.eyebrow')}
+          </p>
+          <h1 className="font-display text-3xl mt-1">
+            {t('reservations.title')}
+          </h1>
+          <p className="text-sm text-ink/50 mt-2">
+            {t('reservations.subtitle')}
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setView('calendar')}
+            className={`rounded-lg border px-3 py-2 text-xs transition ${
+              view === 'calendar'
+                ? 'border-ink bg-ink text-paper'
+                : 'border-line text-ink/60 hover:text-ink'
+            }`}
+          >
+            {t('reservations.viewCalendar')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('list')}
+            className={`rounded-lg border px-3 py-2 text-xs transition ${
+              view === 'list'
+                ? 'border-ink bg-ink text-paper'
+                : 'border-line text-ink/60 hover:text-ink'
+            }`}
+          >
+            {t('reservations.viewList')}
+          </button>
+        </div>
       </div>
 
       {loadError && (
@@ -347,6 +376,15 @@ export default function ReservationsPage({
             </button>
           </div>
 
+          {view === 'calendar' && (
+            <ReservationCalendar
+              restaurantId={restaurantId}
+              onCancel={(id) => cancelReservation(id)}
+              onMarkNoShow={(id) => updateStatus(id, 'NO_SHOW')}
+            />
+          )}
+
+          {view === 'list' && (
           <div>
             <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-ink/60 mb-3">
               {t('reservations.upcoming')}
@@ -412,7 +450,9 @@ export default function ReservationsPage({
               </div>
             )}
           </div>
+          )}
 
+          {view === 'list' && (
           <div>
             <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-ink/60 mb-3">
               {t('reservations.past')}
@@ -449,6 +489,7 @@ export default function ReservationsPage({
               </div>
             )}
           </div>
+          )}
         </div>
 
         <div className="border border-line rounded-xl p-5 h-fit">

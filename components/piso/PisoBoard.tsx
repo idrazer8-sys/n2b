@@ -1056,13 +1056,27 @@ export default function PisoBoard({
                 const reservation = nextReservationByTableId.get(table.id);
                 const bucket = floorBucket(status, !!reservation);
                 const kBucket = kitchenBucket(row?.orders ?? []);
+                // Deliberately NOT recoloured for a booking: amber already
+                // means "preparing" in the kitchen scale, so a reserved table
+                // gets its own corner marker below instead of borrowing a
+                // colour that means something else.
                 const ringColor =
                   lens === 'kitchen' ? KITCHEN_BUCKET_COLOR[kBucket] : BUCKET_COLOR[bucket];
                 const filteredOut =
                   lens === 'kitchen' && highlightBucket !== 'all' && kBucket !== highlightBucket;
 
+                // A free table with a booking coming up isn't really free —
+                // say when it's taken rather than just "Disponible", in both
+                // lenses.
+                const reservedSoon =
+                  !!reservation && (lens !== 'kitchen' || kBucket === 'available');
+
                 let subtitle: string;
                 if (dimmed) subtitle = t('floorPlan.status.notMine');
+                else if (lens === 'kitchen' && reservedSoon && reservation)
+                  subtitle = t('floorPlan.reservedSoon', {
+                    time: formatClock(reservation.startsAt),
+                  });
                 else if (lens === 'kitchen') subtitle = t(`floorPlan.kitchenStage.${kBucket}`);
                 else if (row && row.partySize != null)
                   subtitle = t('floorPlan.detail.guests', { count: row.partySize });
@@ -1120,6 +1134,28 @@ export default function PisoBoard({
                             {shortTableLabel(table.label)}
                           </span>
                         </div>
+
+                        {reservedSoon && reservation && (
+                          <span
+                            className="absolute flex items-center justify-center rounded-full text-white"
+                            style={{
+                              top: -4,
+                              right: -4,
+                              minWidth: 34,
+                              height: 16,
+                              padding: '0 4px',
+                              fontSize: 9,
+                              fontWeight: 700,
+                              background: BUCKET_COLOR.reserved,
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                            }}
+                            title={t('floorPlan.reservedSoon', {
+                              time: formatClock(reservation.startsAt),
+                            })}
+                          >
+                            {formatClock(reservation.startsAt)}
+                          </span>
+                        )}
                       </>
                     ) : (
                       <>

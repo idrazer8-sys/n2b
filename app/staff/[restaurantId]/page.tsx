@@ -28,7 +28,9 @@ import {
   BanknoteIcon,
   BellIcon,
   SignOutIcon,
+  CalendarIcon,
 } from '@/components/branding/icons';
+import ReservationCalendar from '@/components/reservations/ReservationCalendar';
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -748,7 +750,7 @@ export default function StaffOrdersPage() {
   // filtered for, and which table the waiter has tapped.
   const [floorRows, setFloorRows] = useState<FloorRow[]>([]);
   const [navSection, setNavSection] =
-    useState<'tables' | 'orders' | 'payments'>('tables');
+    useState<'tables' | 'orders' | 'payments' | 'reservations'>('tables');
   const [floorFilter, setFloorFilter] =
     useState<KitchenBucket | 'all'>('all');
   const [selectedFloorTableId, setSelectedFloorTableId] =
@@ -2018,6 +2020,12 @@ export default function StaffOrdersPage() {
       icon: BanknoteIcon,
       badge: billCount,
     },
+    {
+      key: 'reservations' as const,
+      label: t('reservations.title'),
+      icon: CalendarIcon,
+      badge: 0,
+    },
   ];
 
   return (
@@ -2137,7 +2145,9 @@ export default function StaffOrdersPage() {
                   ? t('staffPortal.nav.tables')
                   : navSection === 'orders'
                     ? t('staffPortal.nav.orders')
-                    : t('staffPortal.nav.payments')}
+                    : navSection === 'reservations'
+                      ? t('reservations.title')
+                      : t('staffPortal.nav.payments')}
               </h1>
               <p className="text-[13px] sm:text-sm text-[#1A134D]/50 mt-0.5">
                 {t('staffPortal.floor.subtitle')}
@@ -2245,6 +2255,14 @@ export default function StaffOrdersPage() {
           <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 rounded-lg">
             {error}
           </div>
+        )}
+
+        {navSection === 'reservations' && (
+          <section className="mb-8">
+            {/* Read-only for waiters: creating and cancelling bookings stays
+                a manager job, but the book itself is theirs to check. */}
+            <ReservationCalendar restaurantId={restaurantId} />
+          </section>
         )}
 
         {navSection === 'tables' && (
