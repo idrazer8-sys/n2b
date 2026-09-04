@@ -2,6 +2,7 @@ import 'server-only';
 
 import { z } from 'zod';
 import { FONT_PAIRING_KEYS } from './fontPairings';
+import { DIETARY_TAG_KEYS } from './dietaryTags';
 
 /*
  * Thin wrapper around the Google Gemini API (generativelanguage.googleapis.com)
@@ -159,6 +160,10 @@ export const extractedMenuItemSchema = z.object({
   // number standing in for something the model couldn't actually read.
   price: z.number().min(0).max(10000).nullable(),
   allergens: z.array(z.string().trim().max(60)).max(20).optional().default([]),
+  // Closed list, not free text — see DIETARY_TAG_KEYS in dietaryTags.ts.
+  // Only ever set when the source actually supports it; never inferred
+  // from ingredients (a vegetable-looking dish is not necessarily vegan).
+  dietaryTags: z.array(z.enum(DIETARY_TAG_KEYS as [string, ...string[]])).max(6).optional().default([]),
   modifiers: z.array(extractedModifierSchema).max(15).optional().default([]),
 });
 
@@ -209,6 +214,7 @@ Reply with ONLY a single JSON object matching this exact shape:
           "description": "string or null if the menu has no description",
           "price": 12.5,
           "allergens": ["gluten", "dairy"],
+          "dietaryTags": ["VEGAN"],
           "modifiers": [
             {
               "name": "string, e.g. Choose a sauce / Elige salsa",
@@ -243,6 +249,17 @@ the menu (e.g. "Extra queso +1,50€", "Elige salsa", "Con patatas +2€", "Sin 
 of sauce), a MULTIPLE-select group is "add any number" (e.g. extras). "priceDelta" is 0 for a
 free option (like "sin cebolla"). If an item has no such options printed near it, omit
 "modifiers" or return an empty array — never invent options that aren't on the menu.
+
+Rules for "dietaryTags" — pick zero or more of exactly these six values:
+VEGETARIAN, VEGAN, SPICY, VERY_SPICY, GLUTEN_FREE, DAIRY_FREE. Only include one when the
+source gives you real evidence:
+- The menu explicitly says so (an icon, the word "vegano"/"vegan", "picante", "sin gluten", etc.
+  printed next to the item), OR
+- The dish is UNAMBIGUOUSLY that by its named ingredients (e.g. a plain green salad with no
+  cheese, egg, meat, or fish named is vegan; a dish naming "queso" or "huevo" is NOT vegan).
+Do NOT guess from a dish merely sounding or looking plant-based — "looks like a vegetable dish"
+is not evidence of VEGAN or VEGETARIAN on its own if any ingredient is ambiguous or unlisted.
+When genuinely unsure, leave "dietaryTags" empty for that item rather than guessing.
 
 Rules for "branding" — a best-effort guess at the restaurant's visual identity, used only to
 suggest a look for their online menu (the manager reviews and can reject it):

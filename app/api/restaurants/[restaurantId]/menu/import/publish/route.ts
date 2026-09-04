@@ -22,6 +22,7 @@ const itemSchema = z.object({
   description: z.string().trim().max(500).nullable().optional(),
   price: z.number().min(0).max(10000),
   allergens: z.array(z.string().trim().max(60)).max(20).optional().default([]),
+  dietaryTags: z.array(z.string().trim().max(40)).max(10).optional().default([]),
   modifiers: z.array(modifierSchema).max(15).optional().default([]),
 });
 
@@ -106,6 +107,7 @@ export async function POST(
               description: item.description || null,
               priceCents: Math.round(item.price * 100),
               allergens: item.allergens ?? [],
+              dietaryTags: item.dietaryTags ?? [],
               sortOrder: itemSort,
               modifiers: {
                 create: (item.modifiers ?? []).map((modifier, modifierSort) => ({

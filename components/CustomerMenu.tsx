@@ -5,6 +5,7 @@ import { formatCents } from '@/src/lib/format';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import AllergenIconRow from '@/components/AllergenIconRow';
+import DietaryTagIconRow from '@/components/DietaryTagIconRow';
 import { FONT_PAIRINGS, isFontPairingKey, googleFontsHref } from '@/src/lib/fontPairings';
 
 // Converts a #rgb/#rrggbb hex color to an rgba() string — used for the few
@@ -47,6 +48,7 @@ type MenuItem = {
   priceCents: number;
   imageUrl: string | null;
   allergens: string[];
+  dietaryTags: string[];
   modifiers: Modifier[];
 };
 
@@ -599,6 +601,12 @@ export default function CustomerMenu({
                     </p>
                   )}
 
+                  {item.dietaryTags.length > 0 && (
+                    <p className="mt-2">
+                      <DietaryTagIconRow dietaryTags={item.dietaryTags} size={18} />
+                    </p>
+                  )}
+
                   {item.allergens.length > 0 && (
                     <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-[#29251f]/35">
                       <AllergenIconRow allergens={item.allergens} />
@@ -819,6 +827,12 @@ function ItemModal({
               {t('common.close')}
             </button>
           </div>
+
+          {item.dietaryTags.length > 0 && (
+            <p className="mt-3">
+              <DietaryTagIconRow dietaryTags={item.dietaryTags} size={20} />
+            </p>
+          )}
 
           {item.allergens.length > 0 && (
             <p className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-[#29251f]/35">

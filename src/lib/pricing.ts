@@ -64,6 +64,7 @@ export async function priceCart(restaurantId: string, lines: CartLineInput[]) {
     unitPriceCents: number;
     lineTotalCents: number;
     allergensSnapshot: string[];
+    dietaryTagsSnapshot: string[];
     vatRateBpsSnapshot: number;
     notes?: string;
     modifiers: Array<{ modifierOptionId: string; nameSnapshot: string; priceDeltaCentsSnapshot: number }>;
@@ -137,6 +138,7 @@ export async function priceCart(restaurantId: string, lines: CartLineInput[]) {
       unitPriceCents,
       lineTotalCents,
       allergensSnapshot: item.allergens,
+      dietaryTagsSnapshot: item.dietaryTags,
       // Modifiers (e.g. "extra cheese") are taxed at the same rate as the
       // item they modify — a modifier changing an item's tax classification
       // isn't modeled; if that's ever needed, this is where it'd go.

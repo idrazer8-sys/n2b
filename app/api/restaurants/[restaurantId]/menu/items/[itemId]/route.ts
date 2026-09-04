@@ -17,6 +17,7 @@ const patchSchema = z.object({
   // here; this just accepts whatever rate they specify.
   vatRateBps: z.number().int().min(0).max(10000).optional(),
   allergens: z.array(z.string().max(40)).max(20).optional(),
+  dietaryTags: z.array(z.string().max(40)).max(10).optional(),
 });
 
 // Scoped by BOTH itemId and restaurantId in every query below — this is

@@ -202,6 +202,12 @@ model MenuItem {
   priceCents   Int
   imageUrl     String?
   allergens    String[]       @default([])
+  // One of the DietaryTagKey values in src/lib/dietaryTags.ts (VEGETARIAN,
+  // VEGAN, SPICY, VERY_SPICY, GLUTEN_FREE, DAIRY_FREE) — never inferred
+  // automatically from ingredients, only set when the manager or the menu
+  // import AI has real evidence (see the AI prompt's explicit caution:
+  // "looks vegetable-based" is not the same as "is vegan").
+  dietaryTags  String[]       @default([])
   ingredients  String[]       @default([])
   isAvailable  Boolean        @default(true)
   sortOrder    Int            @default(0)
@@ -325,6 +331,9 @@ model OrderItem {
   // menu item's allergens later, a historical order must keep showing what
   // was actually declared when it was served, not the current list.
   allergensSnapshot String[]          @default([])
+  // Same reasoning as allergensSnapshot — a later edit to the menu item's
+  // dietary tags must never change what a historical order shows.
+  dietaryTagsSnapshot String[]        @default([])
   // Snapshot of MenuItem.vatRateBps at the moment this line was ordered —
   // same reasoning as nameSnapshot/unitPriceCents: a rate change to the
   // menu item later must never alter a historical order's figures. NULL

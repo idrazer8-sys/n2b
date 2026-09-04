@@ -6,6 +6,9 @@ import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import { ALLERGEN_KEYS, matchAllergenKeys, type AllergenKey } from '@/src/lib/allergens';
 import { ALLERGEN_ICONS, ALLERGEN_COLORS } from '@/components/branding/allergenIcons';
 import AllergenIconRow from '@/components/AllergenIconRow';
+import { DIETARY_TAG_KEYS, matchDietaryTagKeys, type DietaryTagKey } from '@/src/lib/dietaryTags';
+import { DIETARY_TAG_ICONS, DIETARY_TAG_COLORS } from '@/components/branding/dietaryTagIcons';
+import DietaryTagIconRow from '@/components/DietaryTagIconRow';
 
 type Item = {
   id: string;
@@ -16,6 +19,7 @@ type Item = {
   imageUrl?: string | null;
   vatRateBps: number;
   allergens: string[];
+  dietaryTags: string[];
 };
 
 type Category = {
@@ -421,6 +425,14 @@ export default function MenuManagementPage({
                             {item.allergens.length > 0 && (
                               <AllergenIconRow allergens={item.allergens} size={18} className="mt-1.5" />
                             )}
+
+                            {item.dietaryTags.length > 0 && (
+                              <DietaryTagIconRow
+                                dietaryTags={item.dietaryTags}
+                                size={18}
+                                className="mt-1.5"
+                              />
+                            )}
                           </div>
 
                           <div className="flex flex-wrap gap-2">
@@ -606,6 +618,44 @@ function AllergenPicker({
   );
 }
 
+function DietaryTagPicker({
+  selectedKeys,
+  onToggle,
+}: {
+  selectedKeys: Set<DietaryTagKey>;
+  onToggle: (key: DietaryTagKey) => void;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <div>
+      <label className="block text-xs text-ink/50 mb-1.5">
+        {t('menuTables.editor.dietaryTagsLabel')}
+      </label>
+      <div className="flex flex-wrap gap-1.5">
+        {DIETARY_TAG_KEYS.map((key) => {
+          const Icon = DIETARY_TAG_ICONS[key];
+          const active = selectedKeys.has(key);
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onToggle(key)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs transition-colors ${
+                active ? 'border-transparent text-white' : 'border-line text-ink/60'
+              }`}
+              style={active ? { background: DIETARY_TAG_COLORS[key] } : undefined}
+            >
+              <Icon size={14} />
+              {t(`dietaryTags.${key}`)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function NewItemForm({
   restaurantId,
   categoryId,
@@ -625,11 +675,21 @@ function NewItemForm({
   const [vatChoice, setVatChoice] = useState('1000');
   const [vatCustomPercent, setVatCustomPercent] = useState('');
   const [allergenKeys, setAllergenKeys] = useState<Set<AllergenKey>>(new Set());
+  const [dietaryTagKeys, setDietaryTagKeys] = useState<Set<DietaryTagKey>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   function toggleAllergen(key: AllergenKey) {
     setAllergenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function toggleDietaryTag(key: DietaryTagKey) {
+    setDietaryTagKeys((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -691,6 +751,7 @@ function NewItemForm({
             imageUrl: imageUrl.trim() || undefined,
             vatRateBps,
             allergens: Array.from(allergenKeys).map((key) => t(`allergens.${key}`)),
+            dietaryTags: Array.from(dietaryTagKeys).map((key) => t(`dietaryTags.${key}`)),
             modifiers: [],
           }),
         }
@@ -763,6 +824,8 @@ function NewItemForm({
 
       <AllergenPicker selectedKeys={allergenKeys} onToggle={toggleAllergen} />
 
+      <DietaryTagPicker selectedKeys={dietaryTagKeys} onToggle={toggleDietaryTag} />
+
       {error && (
         <p className="text-sm text-red-700">{error}</p>
       )}
@@ -824,11 +887,23 @@ function EditItemForm({
   const [allergenKeys, setAllergenKeys] = useState<Set<AllergenKey>>(
     () => new Set(matchAllergenKeys(item.allergens))
   );
+  const [dietaryTagKeys, setDietaryTagKeys] = useState<Set<DietaryTagKey>>(
+    () => new Set(matchDietaryTagKeys(item.dietaryTags))
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   function toggleAllergen(key: AllergenKey) {
     setAllergenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function toggleDietaryTag(key: DietaryTagKey) {
+    setDietaryTagKeys((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -889,6 +964,7 @@ function EditItemForm({
             imageUrl: imageUrl.trim() || null,
             vatRateBps,
             allergens: Array.from(allergenKeys).map((key) => t(`allergens.${key}`)),
+            dietaryTags: Array.from(dietaryTagKeys).map((key) => t(`dietaryTags.${key}`)),
           }),
         }
       );
@@ -957,6 +1033,8 @@ function EditItemForm({
       />
 
       <AllergenPicker selectedKeys={allergenKeys} onToggle={toggleAllergen} />
+
+      <DietaryTagPicker selectedKeys={dietaryTagKeys} onToggle={toggleDietaryTag} />
 
       {error && (
         <p className="text-sm text-red-700">{error}</p>

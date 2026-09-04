@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import { FONT_PAIRINGS, isFontPairingKey, googleFontsHref, type FontPairingKey } from '@/src/lib/fontPairings';
+import { DIETARY_TAG_ICONS, DIETARY_TAG_COLORS } from '@/components/branding/dietaryTagIcons';
+import { type DietaryTagKey, isDietaryTagKey } from '@/src/lib/dietaryTags';
 
 type DraftModifierOption = {
   name: string;
@@ -25,6 +27,7 @@ type DraftItem = {
   // "never invent a price" (see extractedMenuItemSchema in src/lib/ai.ts).
   price: string;
   allergens: string[];
+  dietaryTags: DietaryTagKey[];
   modifiers: DraftModifier[];
 };
 
@@ -255,6 +258,7 @@ export default function MenuImportPage() {
         description: string | null;
         price: number | null;
         allergens?: string[];
+        dietaryTags?: string[];
         modifiers?: {
           name: string;
           selectionType?: 'SINGLE' | 'MULTIPLE';
@@ -271,6 +275,7 @@ export default function MenuImportPage() {
             description: item.description ?? '',
             price: item.price === null ? '' : String(item.price),
             allergens: item.allergens ?? [],
+            dietaryTags: (item.dietaryTags ?? []).filter(isDietaryTagKey),
             modifiers: (item.modifiers ?? []).map((modifier) => ({
               name: modifier.name,
               selectionType: modifier.selectionType === 'MULTIPLE' ? 'MULTIPLE' : 'SINGLE',
@@ -342,6 +347,23 @@ export default function MenuImportPage() {
   function updateCategoryName(categoryIndex: number, name: string) {
     setDraft((current) =>
       current.map((category, ci) => (ci !== categoryIndex ? category : { ...category, name }))
+    );
+  }
+
+  function removeDietaryTag(categoryIndex: number, itemIndex: number, tag: DietaryTagKey) {
+    setDraft((current) =>
+      current.map((category, ci) =>
+        ci !== categoryIndex
+          ? category
+          : {
+              ...category,
+              items: category.items.map((item, ii) =>
+                ii !== itemIndex
+                  ? item
+                  : { ...item, dietaryTags: item.dietaryTags.filter((existing) => existing !== tag) }
+              ),
+            }
+      )
     );
   }
 
@@ -421,6 +443,7 @@ export default function MenuImportPage() {
               description: item.description.trim() || null,
               price: Number(item.price) || 0,
               allergens: item.allergens,
+              dietaryTags: item.dietaryTags.map((key) => t(`dietaryTags.${key}`)),
               modifiers: item.modifiers.map((modifier) => ({
                 name: modifier.name.trim(),
                 selectionType: modifier.selectionType,
@@ -663,6 +686,32 @@ export default function MenuImportPage() {
                           <p className="mt-1.5 text-xs text-amber-700">
                             {itemIssues.join(' · ')}
                           </p>
+                        )}
+
+                        {item.dietaryTags.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {item.dietaryTags.map((tag) => {
+                              const Icon = DIETARY_TAG_ICONS[tag];
+                              return (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-white"
+                                  style={{ background: DIETARY_TAG_COLORS[tag] }}
+                                >
+                                  <Icon size={12} />
+                                  {t(`dietaryTags.${tag}`)}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeDietaryTag(categoryIndex, itemIndex, tag)}
+                                    className="ml-0.5"
+                                    aria-label={t('common.remove')}
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              );
+                            })}
+                          </div>
                         )}
 
                         {item.modifiers.length > 0 && (

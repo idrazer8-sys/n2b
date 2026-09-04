@@ -191,6 +191,8 @@ export async function POST(req: NextRequest) {
                         line.lineTotalCents,
                       allergensSnapshot:
                         line.allergensSnapshot,
+                      dietaryTagsSnapshot:
+                        line.dietaryTagsSnapshot,
                       vatRateBpsSnapshot:
                         line.vatRateBpsSnapshot,
                       notes:
