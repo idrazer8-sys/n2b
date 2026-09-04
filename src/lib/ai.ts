@@ -139,11 +139,27 @@ function extractJson(text: string): unknown {
 /* Menu extraction from photos                                         */
 /* ------------------------------------------------------------------ */
 
+export const extractedModifierOptionSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  priceDelta: z.number().min(0).max(1000).optional().default(0),
+});
+
+export const extractedModifierSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  selectionType: z.enum(['SINGLE', 'MULTIPLE']).optional().default('SINGLE'),
+  isRequired: z.boolean().optional().default(false),
+  options: z.array(extractedModifierOptionSchema).min(1).max(20),
+});
+
 export const extractedMenuItemSchema = z.object({
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(500).nullable().optional(),
-  price: z.number().min(0).max(10000),
+  // null means the price could not be read with real confidence — the
+  // manager must fill it in themselves during review. Never a guessed
+  // number standing in for something the model couldn't actually read.
+  price: z.number().min(0).max(10000).nullable(),
   allergens: z.array(z.string().trim().max(60)).max(20).optional().default([]),
+  modifiers: z.array(extractedModifierSchema).max(15).optional().default([]),
 });
 
 export const extractedMenuCategorySchema = z.object({
@@ -192,7 +208,17 @@ Reply with ONLY a single JSON object matching this exact shape:
           "name": "string",
           "description": "string or null if the menu has no description",
           "price": 12.5,
-          "allergens": ["gluten", "dairy"]
+          "allergens": ["gluten", "dairy"],
+          "modifiers": [
+            {
+              "name": "string, e.g. Choose a sauce / Elige salsa",
+              "selectionType": "SINGLE or MULTIPLE",
+              "isRequired": true,
+              "options": [
+                { "name": "string, e.g. Extra cheese / Sin cebolla", "priceDelta": 1.5 }
+              ]
+            }
+          ]
         }
       ]
     }
@@ -206,9 +232,17 @@ Reply with ONLY a single JSON object matching this exact shape:
 Rules for categories/items:
 - "price" is a plain decimal number in the menu's currency major unit (e.g. 12.5 for 12,50€), never a string, never including a currency symbol.
 - Keep category and item names in the SAME language as the source photos.
-- If a price is unreadable, make your best reasonable estimate rather than omitting the item.
+- If a price cannot be read with real confidence, set "price" to null — NEVER guess or invent a
+  number. A missing price is far better than a wrong one; the manager will fill it in by hand.
 - If the photos contain no menu at all, reply with {"categories": [], "branding": {"accentColor": null, "fontPairing": null}}.
 - Do not invent items that are not in the photos.
+
+Rules for "modifiers" — options a customer chooses when ordering the item, printed near it on
+the menu (e.g. "Extra queso +1,50€", "Elige salsa", "Con patatas +2€", "Sin cebolla",
+"Suplemento trufa +3€"). Group them: a SINGLE-select group is "choose exactly one" (e.g. choice
+of sauce), a MULTIPLE-select group is "add any number" (e.g. extras). "priceDelta" is 0 for a
+free option (like "sin cebolla"). If an item has no such options printed near it, omit
+"modifiers" or return an empty array — never invent options that aren't on the menu.
 
 Rules for "branding" — a best-effort guess at the restaurant's visual identity, used only to
 suggest a look for their online menu (the manager reviews and can reject it):

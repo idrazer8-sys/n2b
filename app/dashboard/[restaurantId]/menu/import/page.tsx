@@ -1,20 +1,46 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import { FONT_PAIRINGS, isFontPairingKey, googleFontsHref, type FontPairingKey } from '@/src/lib/fontPairings';
 
+type DraftModifierOption = {
+  name: string;
+  priceDelta: string;
+};
+
+type DraftModifier = {
+  name: string;
+  selectionType: 'SINGLE' | 'MULTIPLE';
+  isRequired: boolean;
+  options: DraftModifierOption[];
+};
+
 type DraftItem = {
   name: string;
   description: string;
+  // '' means the AI could not read the price with confidence — this item
+  // is blocked from publishing until the manager fills it in by hand, per
+  // "never invent a price" (see extractedMenuItemSchema in src/lib/ai.ts).
   price: string;
   allergens: string[];
+  modifiers: DraftModifier[];
 };
 
 type DraftCategory = {
   name: string;
   items: DraftItem[];
+};
+
+// Deterministic, computed from the draft itself — never asks the AI to
+// self-report confidence. A missing/blank price or a duplicate name is
+// something the app can just check, more reliably than an LLM grading its
+// own work.
+type DraftIssue = {
+  categoryIndex: number;
+  itemIndex: number | null; // null = a category-level issue (e.g. empty)
+  message: string;
 };
 
 type Step = 'upload' | 'reviewing';
@@ -95,6 +121,62 @@ export default function MenuImportPage() {
   const [branding, setBranding] = useState<BrandingSuggestion | null>(null);
   const [applyBranding, setApplyBranding] = useState(true);
 
+  // Computed straight from the draft, not asked of the AI — a blank price
+  // or a repeated name is something the app can just check deterministically,
+  // which is more trustworthy than an LLM grading its own extraction.
+  const issues = useMemo<DraftIssue[]>(() => {
+    const found: DraftIssue[] = [];
+
+    draft.forEach((category, categoryIndex) => {
+      if (category.items.length === 0) {
+        found.push({
+          categoryIndex,
+          itemIndex: null,
+          message: t('menuTables.import.issueEmptyCategory'),
+        });
+        return;
+      }
+
+      const seenNames = new Map<string, number>();
+
+      category.items.forEach((item, itemIndex) => {
+        const numericPrice = Number(item.price);
+
+        if (item.price.trim() === '' || !Number.isFinite(numericPrice)) {
+          found.push({
+            categoryIndex,
+            itemIndex,
+            message: t('menuTables.import.issueMissingPrice'),
+          });
+        }
+
+        const key = item.name.trim().toLowerCase();
+        if (key) {
+          const firstIndex = seenNames.get(key);
+          if (firstIndex !== undefined) {
+            found.push({
+              categoryIndex,
+              itemIndex,
+              message: t('menuTables.import.issueDuplicateName'),
+            });
+          } else {
+            seenNames.set(key, itemIndex);
+          }
+        }
+      });
+    });
+
+    return found;
+  }, [draft, t]);
+
+  const blockingIssueCount = issues.filter((issue) => issue.itemIndex !== null).length;
+
+  function issueMessagesFor(categoryIndex: number, itemIndex: number): string[] {
+    return issues
+      .filter((issue) => issue.categoryIndex === categoryIndex && issue.itemIndex === itemIndex)
+      .map((issue) => issue.message);
+  }
+
   // Loads the suggested font pairing's Google Font so the preview card
   // actually renders in that typeface, not just names it.
   useEffect(() => {
@@ -168,14 +250,36 @@ export default function MenuImportPage() {
         );
       }
 
+      type RawItem = {
+        name: string;
+        description: string | null;
+        price: number | null;
+        allergens?: string[];
+        modifiers?: {
+          name: string;
+          selectionType?: 'SINGLE' | 'MULTIPLE';
+          isRequired?: boolean;
+          options: { name: string; priceDelta?: number }[];
+        }[];
+      };
+
       const categories: DraftCategory[] = (json.categories ?? []).map(
-        (category: { name: string; items: { name: string; description: string | null; price: number; allergens?: string[] }[] }) => ({
+        (category: { name: string; items: RawItem[] }) => ({
           name: category.name,
           items: category.items.map((item) => ({
             name: item.name,
             description: item.description ?? '',
-            price: String(item.price),
+            price: item.price === null ? '' : String(item.price),
             allergens: item.allergens ?? [],
+            modifiers: (item.modifiers ?? []).map((modifier) => ({
+              name: modifier.name,
+              selectionType: modifier.selectionType === 'MULTIPLE' ? 'MULTIPLE' : 'SINGLE',
+              isRequired: modifier.isRequired ?? false,
+              options: modifier.options.map((option) => ({
+                name: option.name,
+                priceDelta: String(option.priceDelta ?? 0),
+              })),
+            })),
           })),
         })
       );
@@ -241,11 +345,68 @@ export default function MenuImportPage() {
     );
   }
 
+  function removeModifier(categoryIndex: number, itemIndex: number, modifierIndex: number) {
+    setDraft((current) =>
+      current.map((category, ci) =>
+        ci !== categoryIndex
+          ? category
+          : {
+              ...category,
+              items: category.items.map((item, ii) =>
+                ii !== itemIndex
+                  ? item
+                  : { ...item, modifiers: item.modifiers.filter((_, mi) => mi !== modifierIndex) }
+              ),
+            }
+      )
+    );
+  }
+
+  function updateModifierOptionPrice(
+    categoryIndex: number,
+    itemIndex: number,
+    modifierIndex: number,
+    optionIndex: number,
+    priceDelta: string
+  ) {
+    setDraft((current) =>
+      current.map((category, ci) =>
+        ci !== categoryIndex
+          ? category
+          : {
+              ...category,
+              items: category.items.map((item, ii) =>
+                ii !== itemIndex
+                  ? item
+                  : {
+                      ...item,
+                      modifiers: item.modifiers.map((modifier, mi) =>
+                        mi !== modifierIndex
+                          ? modifier
+                          : {
+                              ...modifier,
+                              options: modifier.options.map((option, oi) =>
+                                oi !== optionIndex ? option : { ...option, priceDelta }
+                              ),
+                            }
+                      ),
+                    }
+              ),
+            }
+      )
+    );
+  }
+
   function removeCategory(categoryIndex: number) {
     setDraft((current) => current.filter((_, ci) => ci !== categoryIndex));
   }
 
   async function publish() {
+    if (blockingIssueCount > 0) {
+      setError(t('menuTables.import.fixIssuesBeforePublishing'));
+      return;
+    }
+
     setPublishing(true);
     setError(null);
 
@@ -260,6 +421,15 @@ export default function MenuImportPage() {
               description: item.description.trim() || null,
               price: Number(item.price) || 0,
               allergens: item.allergens,
+              modifiers: item.modifiers.map((modifier) => ({
+                name: modifier.name.trim(),
+                selectionType: modifier.selectionType,
+                isRequired: modifier.isRequired,
+                options: modifier.options.map((option) => ({
+                  name: option.name.trim(),
+                  priceDelta: Number(option.priceDelta) || 0,
+                })),
+              })),
             })),
         })),
       };
@@ -384,9 +554,34 @@ export default function MenuImportPage() {
 
       {step === 'reviewing' && (
         <div className="max-w-2xl">
-          <p className="text-sm text-ink/50 mb-6">
+          <p className="text-sm text-ink/50 mb-4">
             {t('menuTables.import.reviewSubheading')}
           </p>
+
+          <div
+            className={`mb-6 rounded-xl px-4 py-3 text-sm ${
+              blockingIssueCount > 0
+                ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                : 'bg-green-50 text-green-900 border border-green-200'
+            }`}
+          >
+            {t('menuTables.import.foundSummary', {
+              items: String(draft.reduce((sum, c) => sum + c.items.length, 0)),
+              categories: String(draft.length),
+              modifiers: String(
+                draft.reduce(
+                  (sum, c) => sum + c.items.reduce((s, i) => s + i.modifiers.length, 0),
+                  0
+                )
+              ),
+            })}
+            {blockingIssueCount > 0 && (
+              <>
+                {' '}
+                {t('menuTables.import.foundIssues', { count: String(blockingIssueCount) })}
+              </>
+            )}
+          </div>
 
           <div className="space-y-8">
             {draft.map((category, categoryIndex) => (
@@ -409,50 +604,115 @@ export default function MenuImportPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {category.items.map((item, itemIndex) => (
-                    <div
-                      key={itemIndex}
-                      className="grid grid-cols-[1fr_auto] gap-2 border-b border-line/60 pb-3"
-                    >
-                      <div className="space-y-2">
-                        <input
-                          value={item.name}
-                          onChange={(event) =>
-                            updateItem(categoryIndex, itemIndex, { name: event.target.value })
-                          }
-                          placeholder={t('menuTables.import.itemNamePlaceholder')}
-                          className="w-full border border-line rounded-lg px-3 py-2 text-sm"
-                        />
-                        <input
-                          value={item.description}
-                          onChange={(event) =>
-                            updateItem(categoryIndex, itemIndex, { description: event.target.value })
-                          }
-                          placeholder={t('menuTables.import.descriptionOptionalPlaceholder')}
-                          className="w-full border border-line rounded-lg px-3 py-2 text-sm"
-                        />
-                      </div>
+                  {category.items.map((item, itemIndex) => {
+                    const itemIssues = issueMessagesFor(categoryIndex, itemIndex);
+                    const priceHasIssue = itemIssues.includes(
+                      t('menuTables.import.issueMissingPrice')
+                    );
 
-                      <div className="flex flex-col items-end gap-2">
-                        <input
-                          value={item.price}
-                          onChange={(event) =>
-                            updateItem(categoryIndex, itemIndex, { price: event.target.value })
-                          }
-                          inputMode="decimal"
-                          placeholder={t('menuTables.import.pricePlaceholderZero')}
-                          className="w-24 border border-line rounded-lg px-3 py-2 text-sm text-right"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeItem(categoryIndex, itemIndex)}
-                          className="text-xs text-red-700"
-                        >
-                          {t('common.remove')}
-                        </button>
+                    return (
+                      <div
+                        key={itemIndex}
+                        className="border-b border-line/60 pb-3"
+                      >
+                        <div className="grid grid-cols-[1fr_auto] gap-2">
+                          <div className="space-y-2">
+                            <input
+                              value={item.name}
+                              onChange={(event) =>
+                                updateItem(categoryIndex, itemIndex, { name: event.target.value })
+                              }
+                              placeholder={t('menuTables.import.itemNamePlaceholder')}
+                              className="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                            />
+                            <input
+                              value={item.description}
+                              onChange={(event) =>
+                                updateItem(categoryIndex, itemIndex, { description: event.target.value })
+                              }
+                              placeholder={t('menuTables.import.descriptionOptionalPlaceholder')}
+                              className="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                            />
+                          </div>
+
+                          <div className="flex flex-col items-end gap-2">
+                            <input
+                              value={item.price}
+                              onChange={(event) =>
+                                updateItem(categoryIndex, itemIndex, { price: event.target.value })
+                              }
+                              inputMode="decimal"
+                              placeholder={t('menuTables.import.pricePlaceholderZero')}
+                              className={`w-24 border rounded-lg px-3 py-2 text-sm text-right ${
+                                priceHasIssue
+                                  ? 'border-amber-400 bg-amber-50'
+                                  : 'border-line'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeItem(categoryIndex, itemIndex)}
+                              className="text-xs text-red-700"
+                            >
+                              {t('common.remove')}
+                            </button>
+                          </div>
+                        </div>
+
+                        {itemIssues.length > 0 && (
+                          <p className="mt-1.5 text-xs text-amber-700">
+                            {itemIssues.join(' · ')}
+                          </p>
+                        )}
+
+                        {item.modifiers.length > 0 && (
+                          <div className="mt-2 space-y-1.5">
+                            {item.modifiers.map((modifier, modifierIndex) => (
+                              <div
+                                key={modifierIndex}
+                                className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-black/[0.02] px-3 py-2 text-xs"
+                              >
+                                <span className="font-medium">{modifier.name}</span>
+                                <span className="text-ink/40">
+                                  {modifier.selectionType === 'MULTIPLE'
+                                    ? t('menuTables.import.modifierMultiple')
+                                    : t('menuTables.import.modifierSingle')}
+                                </span>
+
+                                {modifier.options.map((option, optionIndex) => (
+                                  <span key={optionIndex} className="inline-flex items-center gap-1 text-ink/70">
+                                    {option.name}
+                                    <input
+                                      value={option.priceDelta}
+                                      onChange={(event) =>
+                                        updateModifierOptionPrice(
+                                          categoryIndex,
+                                          itemIndex,
+                                          modifierIndex,
+                                          optionIndex,
+                                          event.target.value
+                                        )
+                                      }
+                                      inputMode="decimal"
+                                      className="w-12 border border-line rounded px-1 py-0.5 text-right"
+                                    />
+                                  </span>
+                                ))}
+
+                                <button
+                                  type="button"
+                                  onClick={() => removeModifier(categoryIndex, itemIndex, modifierIndex)}
+                                  className="ml-auto text-red-700"
+                                >
+                                  {t('common.remove')}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {category.items.length === 0 && (
                     <p className="text-xs text-ink/40">{t('menuTables.import.noItemsInCategory')}</p>
@@ -515,8 +775,13 @@ export default function MenuImportPage() {
 
             <button
               type="button"
-              disabled={publishing}
+              disabled={publishing || blockingIssueCount > 0}
               onClick={publish}
+              title={
+                blockingIssueCount > 0
+                  ? t('menuTables.import.fixIssuesBeforePublishing')
+                  : undefined
+              }
               className="flex-1 bg-ink text-paper rounded-lg px-4 py-3 text-sm font-medium disabled:opacity-50"
             >
               {publishing

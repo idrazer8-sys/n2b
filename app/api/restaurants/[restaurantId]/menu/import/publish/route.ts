@@ -5,11 +5,24 @@ import { db } from '@/src/lib/db';
 import { requireRestaurantAccess } from '@/src/lib/auth';
 import { errorResponse } from '@/src/lib/api-response';
 
+const modifierOptionSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  priceDelta: z.number().min(0).max(1000).optional().default(0),
+});
+
+const modifierSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  selectionType: z.enum(['SINGLE', 'MULTIPLE']).optional().default('SINGLE'),
+  isRequired: z.boolean().optional().default(false),
+  options: z.array(modifierOptionSchema).max(20).default([]),
+});
+
 const itemSchema = z.object({
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(500).nullable().optional(),
   price: z.number().min(0).max(10000),
   allergens: z.array(z.string().trim().max(60)).max(20).optional().default([]),
+  modifiers: z.array(modifierSchema).max(15).optional().default([]),
 });
 
 const categorySchema = z.object({
@@ -94,6 +107,21 @@ export async function POST(
               priceCents: Math.round(item.price * 100),
               allergens: item.allergens ?? [],
               sortOrder: itemSort,
+              modifiers: {
+                create: (item.modifiers ?? []).map((modifier, modifierSort) => ({
+                  name: modifier.name,
+                  selectionType: modifier.selectionType,
+                  isRequired: modifier.isRequired,
+                  sortOrder: modifierSort,
+                  options: {
+                    create: modifier.options.map((option, optionSort) => ({
+                      name: option.name,
+                      priceDeltaCents: Math.round(option.priceDelta * 100),
+                      sortOrder: optionSort,
+                    })),
+                  },
+                })),
+              },
             },
           });
 
