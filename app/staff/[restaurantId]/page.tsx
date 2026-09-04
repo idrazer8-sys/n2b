@@ -1095,15 +1095,19 @@ export default function StaffOrdersPage() {
               : []
           );
 
-          const floorStatusJson = floorStatusRes.ok
-            ? await floorStatusRes.json().catch(() => ({ tables: [] }))
-            : { tables: [] };
+          // Only ever replaced with a real answer: blanking it on a failed
+          // poll would empty the floor plan, zero the stage counts and drop
+          // whichever table the waiter had open — mid-service — for what is
+          // usually one hiccup that fixes itself on the next tick.
+          if (floorStatusRes.ok) {
+            const floorStatusJson = await floorStatusRes
+              .json()
+              .catch(() => null);
 
-          setFloorRows(
-            Array.isArray(floorStatusJson?.tables)
-              ? floorStatusJson.tables
-              : []
-          );
+            if (Array.isArray(floorStatusJson?.tables)) {
+              setFloorRows(floorStatusJson.tables);
+            }
+          }
         };
 
         try {
@@ -2120,7 +2124,11 @@ export default function StaffOrdersPage() {
           1104px room instead of pushing the whole page wider than the
           screen — that's what lets the plan scale down beside the panel. */}
       <div className="flex-1 min-w-0 md:ml-56">
-      <header className="sticky top-0 z-30 border-b border-[#1A134D]/10 bg-[#F5F6FA]/95 backdrop-blur">
+      {/* Only pinned once there's height to spare: on a phone this block
+          (title, sound, clock, three counters) is half the screen, and
+          keeping it stuck on top of the scrolling plan reads as the page
+          being drawn twice. */}
+      <header className="md:sticky md:top-0 z-30 border-b border-[#1A134D]/10 bg-[#F5F6FA]/95 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
