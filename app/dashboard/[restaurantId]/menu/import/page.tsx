@@ -6,6 +6,7 @@ import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import { FONT_PAIRINGS, isFontPairingKey, googleFontsHref, type FontPairingKey } from '@/src/lib/fontPairings';
 import { DIETARY_TAG_ICONS, DIETARY_TAG_COLORS } from '@/components/branding/dietaryTagIcons';
 import { type DietaryTagKey, isDietaryTagKey } from '@/src/lib/dietaryTags';
+import NeedsReviewBadge from '@/components/NeedsReviewBadge';
 
 type DraftModifierOption = {
   name: string;
@@ -19,6 +20,12 @@ type DraftModifier = {
   options: DraftModifierOption[];
 };
 
+// The AI's own coarse self-assessment (see confidenceLevel in
+// src/lib/ai.ts) — a signal that can only ADD review items on top of the
+// deterministic checks below, never remove one they already caught.
+type AiConfidence = 'high' | 'medium' | 'low';
+type UncertainField = 'name' | 'description' | 'price' | 'allergens' | 'dietaryTags' | 'modifiers';
+
 type DraftItem = {
   name: string;
   description: string;
@@ -29,21 +36,26 @@ type DraftItem = {
   allergens: string[];
   dietaryTags: DietaryTagKey[];
   modifiers: DraftModifier[];
+  confidence: AiConfidence;
+  uncertainFields: UncertainField[];
 };
 
 type DraftCategory = {
   name: string;
   items: DraftItem[];
+  confidence: AiConfidence;
 };
 
-// Deterministic, computed from the draft itself — never asks the AI to
-// self-report confidence. A missing/blank price or a duplicate name is
-// something the app can just check, more reliably than an LLM grading its
-// own work.
+// severity: 'blocking' issues (missing/blank price, duplicate name) are
+// deterministic, computed from the draft itself — never asked of the AI —
+// and gate the Publish button exactly as before. 'advisory' issues (an
+// empty category, or the AI flagging its own uncertainty) are surfaced for
+// review but never block publishing.
 type DraftIssue = {
   categoryIndex: number;
   itemIndex: number | null; // null = a category-level issue (e.g. empty)
   message: string;
+  severity: 'blocking' | 'advisory';
 };
 
 type Step = 'upload' | 'reviewing';
@@ -138,10 +150,14 @@ export default function MenuImportPage() {
   const [applyBranding, setApplyBranding] = useState(true);
   const [applyBackground, setApplyBackground] = useState(true);
   const [backgroundPhotoIndex, setBackgroundPhotoIndex] = useState(0);
+  const [reviewCursor, setReviewCursor] = useState(0);
 
-  // Computed straight from the draft, not asked of the AI — a blank price
-  // or a repeated name is something the app can just check deterministically,
-  // which is more trustworthy than an LLM grading its own extraction.
+  // Blocking checks are computed straight from the draft, not asked of the
+  // AI — a blank price or a repeated name is something the app can just
+  // check deterministically, which is more trustworthy than an LLM grading
+  // its own extraction. Advisory checks add the AI's own self-reported
+  // uncertainty on top — they never remove a blocking check, and never
+  // block Publish themselves.
   const issues = useMemo<DraftIssue[]>(() => {
     const found: DraftIssue[] = [];
 
@@ -151,8 +167,18 @@ export default function MenuImportPage() {
           categoryIndex,
           itemIndex: null,
           message: t('menuTables.import.issueEmptyCategory'),
+          severity: 'advisory',
         });
         return;
+      }
+
+      if (category.confidence === 'low' || category.confidence === 'medium') {
+        found.push({
+          categoryIndex,
+          itemIndex: null,
+          message: t('menuTables.import.issueUncertainCategory'),
+          severity: 'advisory',
+        });
       }
 
       const seenNames = new Map<string, number>();
@@ -165,6 +191,7 @@ export default function MenuImportPage() {
             categoryIndex,
             itemIndex,
             message: t('menuTables.import.issueMissingPrice'),
+            severity: 'blocking',
           });
         }
 
@@ -176,10 +203,30 @@ export default function MenuImportPage() {
               categoryIndex,
               itemIndex,
               message: t('menuTables.import.issueDuplicateName'),
+              severity: 'blocking',
             });
           } else {
             seenNames.set(key, itemIndex);
           }
+        }
+
+        // AI-self-reported uncertainty — additive only, never blocking.
+        item.uncertainFields.forEach((field) => {
+          found.push({
+            categoryIndex,
+            itemIndex,
+            message: t(`menuTables.import.uncertainField.${field}`),
+            severity: 'advisory',
+          });
+        });
+
+        if (item.confidence === 'low' && item.uncertainFields.length === 0) {
+          found.push({
+            categoryIndex,
+            itemIndex,
+            message: t('menuTables.import.issueLowConfidence'),
+            severity: 'advisory',
+          });
         }
       });
     });
@@ -187,7 +234,39 @@ export default function MenuImportPage() {
     return found;
   }, [draft, t]);
 
-  const blockingIssueCount = issues.filter((issue) => issue.itemIndex !== null).length;
+  const blockingIssueCount = issues.filter((issue) => issue.severity === 'blocking').length;
+
+  const totalItemCount = draft.reduce((sum, category) => sum + category.items.length, 0);
+
+  // Every distinct item touched by at least one issue (blocking or
+  // advisory) — used both for the "X ready / Y need attention" summary and
+  // to drive the "jump to next" button, in draft order.
+  const flaggedItemPositions = useMemo(() => {
+    const seen = new Set<string>();
+    const positions: { categoryIndex: number; itemIndex: number }[] = [];
+
+    issues.forEach((issue) => {
+      if (issue.itemIndex === null) return;
+      const key = `${issue.categoryIndex}:${issue.itemIndex}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      positions.push({ categoryIndex: issue.categoryIndex, itemIndex: issue.itemIndex });
+    });
+
+    positions.sort((a, b) => a.categoryIndex - b.categoryIndex || a.itemIndex - b.itemIndex);
+    return positions;
+  }, [issues]);
+
+  const readyItemCount = totalItemCount - flaggedItemPositions.length;
+
+  function jumpToNextFlaggedItem() {
+    if (flaggedItemPositions.length === 0) return;
+    const position = flaggedItemPositions[reviewCursor % flaggedItemPositions.length];
+    setReviewCursor((current) => current + 1);
+    document
+      .getElementById(`import-item-${position.categoryIndex}-${position.itemIndex}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 
   function issueMessagesFor(categoryIndex: number, itemIndex: number): string[] {
     return issues
@@ -268,6 +347,8 @@ export default function MenuImportPage() {
         );
       }
 
+      type RawConfidence = 'high' | 'medium' | 'low';
+
       type RawItem = {
         name: string;
         description: string | null;
@@ -280,11 +361,14 @@ export default function MenuImportPage() {
           isRequired?: boolean;
           options: { name: string; priceDelta?: number }[];
         }[];
+        confidence?: RawConfidence;
+        uncertainFields?: UncertainField[];
       };
 
       const categories: DraftCategory[] = (json.categories ?? []).map(
-        (category: { name: string; items: RawItem[] }) => ({
+        (category: { name: string; items: RawItem[]; confidence?: RawConfidence }) => ({
           name: category.name,
+          confidence: category.confidence ?? 'high',
           items: category.items.map((item) => ({
             name: item.name,
             description: item.description ?? '',
@@ -300,6 +384,8 @@ export default function MenuImportPage() {
                 priceDelta: String(option.priceDelta ?? 0),
               })),
             })),
+            confidence: item.confidence ?? 'high',
+            uncertainFields: item.uncertainFields ?? [],
           })),
         })
       );
@@ -610,26 +696,28 @@ export default function MenuImportPage() {
 
           <div
             className={`mb-6 rounded-xl px-4 py-3 text-sm ${
-              blockingIssueCount > 0
+              flaggedItemPositions.length > 0
                 ? 'bg-amber-50 text-amber-900 border border-amber-200'
                 : 'bg-green-50 text-green-900 border border-green-200'
             }`}
           >
-            {t('menuTables.import.foundSummary', {
-              items: String(draft.reduce((sum, c) => sum + c.items.length, 0)),
-              categories: String(draft.length),
-              modifiers: String(
-                draft.reduce(
-                  (sum, c) => sum + c.items.reduce((s, i) => s + i.modifiers.length, 0),
-                  0
-                )
-              ),
-            })}
-            {blockingIssueCount > 0 && (
-              <>
-                {' '}
-                {t('menuTables.import.foundIssues', { count: String(blockingIssueCount) })}
-              </>
+            <p>{t('menuTables.import.summaryDetected', { count: String(totalItemCount) })}</p>
+            <p>{t('menuTables.import.summaryReady', { count: String(readyItemCount) })}</p>
+            {flaggedItemPositions.length > 0 && (
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <p>
+                  {t('menuTables.import.summaryNeedsAttention', {
+                    count: String(flaggedItemPositions.length),
+                  })}
+                </p>
+                <button
+                  type="button"
+                  onClick={jumpToNextFlaggedItem}
+                  className="shrink-0 rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                >
+                  {t('menuTables.import.jumpToNext')}
+                </button>
+              </div>
             )}
           </div>
 
@@ -644,6 +732,9 @@ export default function MenuImportPage() {
                     }
                     className="flex-1 font-display text-xl border-b border-line pb-1 outline-none focus:border-ink bg-transparent"
                   />
+                  {category.confidence !== 'high' && (
+                    <NeedsReviewBadge reason={t('menuTables.import.issueUncertainCategory')} />
+                  )}
                   <button
                     type="button"
                     onClick={() => removeCategory(categoryIndex)}
@@ -659,46 +750,65 @@ export default function MenuImportPage() {
                     const priceHasIssue = itemIssues.includes(
                       t('menuTables.import.issueMissingPrice')
                     );
+                    const nameUncertain = item.uncertainFields.includes('name');
+                    const descriptionUncertain = item.uncertainFields.includes('description');
+                    const priceUncertain = item.uncertainFields.includes('price');
 
                     return (
                       <div
                         key={itemIndex}
-                        className="border-b border-line/60 pb-3"
+                        id={`import-item-${categoryIndex}-${itemIndex}`}
+                        className="border-b border-line/60 pb-3 scroll-mt-6"
                       >
                         <div className="grid grid-cols-[1fr_auto] gap-2">
                           <div className="space-y-2">
-                            <input
-                              value={item.name}
-                              onChange={(event) =>
-                                updateItem(categoryIndex, itemIndex, { name: event.target.value })
-                              }
-                              placeholder={t('menuTables.import.itemNamePlaceholder')}
-                              className="w-full border border-line rounded-lg px-3 py-2 text-sm"
-                            />
-                            <input
-                              value={item.description}
-                              onChange={(event) =>
-                                updateItem(categoryIndex, itemIndex, { description: event.target.value })
-                              }
-                              placeholder={t('menuTables.import.descriptionOptionalPlaceholder')}
-                              className="w-full border border-line rounded-lg px-3 py-2 text-sm"
-                            />
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                value={item.name}
+                                onChange={(event) =>
+                                  updateItem(categoryIndex, itemIndex, { name: event.target.value })
+                                }
+                                placeholder={t('menuTables.import.itemNamePlaceholder')}
+                                className="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                              />
+                              {nameUncertain && (
+                                <NeedsReviewBadge reason={t('menuTables.import.needsReviewReason')} />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                value={item.description}
+                                onChange={(event) =>
+                                  updateItem(categoryIndex, itemIndex, { description: event.target.value })
+                                }
+                                placeholder={t('menuTables.import.descriptionOptionalPlaceholder')}
+                                className="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                              />
+                              {descriptionUncertain && (
+                                <NeedsReviewBadge reason={t('menuTables.import.needsReviewReason')} />
+                              )}
+                            </div>
                           </div>
 
                           <div className="flex flex-col items-end gap-2">
-                            <input
-                              value={item.price}
-                              onChange={(event) =>
-                                updateItem(categoryIndex, itemIndex, { price: event.target.value })
-                              }
-                              inputMode="decimal"
-                              placeholder={t('menuTables.import.pricePlaceholderZero')}
-                              className={`w-24 border rounded-lg px-3 py-2 text-sm text-right ${
-                                priceHasIssue
-                                  ? 'border-amber-400 bg-amber-50'
-                                  : 'border-line'
-                              }`}
-                            />
+                            <div className="flex items-center gap-1.5">
+                              {priceUncertain && !priceHasIssue && (
+                                <NeedsReviewBadge reason={t('menuTables.import.needsReviewReason')} />
+                              )}
+                              <input
+                                value={item.price}
+                                onChange={(event) =>
+                                  updateItem(categoryIndex, itemIndex, { price: event.target.value })
+                                }
+                                inputMode="decimal"
+                                placeholder={t('menuTables.import.pricePlaceholderZero')}
+                                className={`w-24 border rounded-lg px-3 py-2 text-sm text-right ${
+                                  priceHasIssue
+                                    ? 'border-amber-400 bg-amber-50'
+                                    : 'border-line'
+                                }`}
+                              />
+                            </div>
                             <button
                               type="button"
                               onClick={() => removeItem(categoryIndex, itemIndex)}
@@ -713,6 +823,24 @@ export default function MenuImportPage() {
                           <p className="mt-1.5 text-xs text-amber-700">
                             {itemIssues.join(' · ')}
                           </p>
+                        )}
+
+                        {(['allergens', 'dietaryTags', 'modifiers'] as const).some((field) =>
+                          item.uncertainFields.includes(field)
+                        ) && (
+                          <div className="mt-1.5 flex flex-wrap gap-2">
+                            {(['allergens', 'dietaryTags', 'modifiers'] as const)
+                              .filter((field) => item.uncertainFields.includes(field))
+                              .map((field) => (
+                                <span
+                                  key={field}
+                                  className="inline-flex items-center gap-1 text-xs text-amber-700"
+                                >
+                                  <NeedsReviewBadge reason={t('menuTables.import.needsReviewReason')} />
+                                  {t(`menuTables.import.uncertainField.${field}`)}
+                                </span>
+                              ))}
+                          </div>
                         )}
 
                         {item.dietaryTags.length > 0 && (

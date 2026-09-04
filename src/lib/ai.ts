@@ -152,6 +152,14 @@ export const extractedModifierSchema = z.object({
   options: z.array(extractedModifierOptionSchema).min(1).max(20),
 });
 
+// Coarse, self-reported buckets — never a fake-precise percentage. This is
+// a signal that ADDS review items on top of the deterministic checks the
+// review page already runs (missing price, duplicate name, empty
+// category); it never substitutes for them and never suppresses one. An
+// LLM grading its own extraction is not a calibrated probability, so we
+// only ever ask it for "am I unsure about this," not "how sure am I."
+const confidenceLevel = z.enum(['high', 'medium', 'low']);
+
 export const extractedMenuItemSchema = z.object({
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(500).nullable().optional(),
@@ -165,11 +173,21 @@ export const extractedMenuItemSchema = z.object({
   // from ingredients (a vegetable-looking dish is not necessarily vegan).
   dietaryTags: z.array(z.enum(DIETARY_TAG_KEYS as [string, ...string[]])).max(6).optional().default([]),
   modifiers: z.array(extractedModifierSchema).max(15).optional().default([]),
+  confidence: confidenceLevel.optional().default('high'),
+  // Which specific fields the model itself is unsure about, if any — lets
+  // the review UI badge just the shaky field instead of the whole item.
+  uncertainFields: z
+    .array(z.enum(['name', 'description', 'price', 'allergens', 'dietaryTags', 'modifiers']))
+    .optional()
+    .default([]),
 });
 
 export const extractedMenuCategorySchema = z.object({
   name: z.string().trim().min(1).max(120),
   items: z.array(extractedMenuItemSchema).max(200),
+  // Is the model sure this is a real, distinct category (vs. e.g. a guess
+  // at where to split two run-together sections on a cluttered photo).
+  confidence: confidenceLevel.optional().default('high'),
 });
 
 // Closed list — see the FONT_PAIRINGS registry comment in fontPairings.ts
@@ -224,9 +242,12 @@ Reply with ONLY a single JSON object matching this exact shape:
                 { "name": "string, e.g. Extra cheese / Sin cebolla", "priceDelta": 1.5 }
               ]
             }
-          ]
+          ],
+          "confidence": "high, medium, or low",
+          "uncertainFields": ["price"]
         }
-      ]
+      ],
+      "confidence": "high, medium, or low"
     }
   ],
   "branding": {
@@ -245,6 +266,23 @@ Rules for categories/items:
 - Do not invent a "description" when the menu shows none — leave it null. A restaurant naming a
   dish (e.g. "Pizza de la casa", "Menú del día") with nothing else printed is NOT an invitation
   to write plausible-sounding filler text; null is the correct, honest answer.
+
+Rules for "confidence" and "uncertainFields" — your own honest self-assessment, used only to
+tell the manager which fields are worth a second look, never to decide whether to include
+something:
+- Item-level "confidence": "low" if the source text for this item was blurry, partially cropped,
+  overlapping another item, or you had to make a real judgment call anywhere in it. "medium" if
+  mostly clear but one detail is a bit uncertain. "high" if you read it cleanly and are not
+  guessing at anything.
+- "uncertainFields": list only the specific fields (name, description, price, allergens,
+  dietaryTags, modifiers) you are genuinely unsure about for this item — e.g. the price digits
+  were smudged, or you're not fully sure an item belongs in this category. Leave it empty when
+  nothing about the item felt uncertain.
+- Category-level "confidence": "low"/"medium" if you had to guess where one section ends and
+  another begins (e.g. a cluttered layout with no clear heading break), "high" otherwise.
+- This is separate from — and never a substitute for — the null-price and no-invented-content
+  rules above. Marking something "low confidence" is not permission to guess; if you can't read
+  a price at all, it is still null, not a low-confidence number.
 
 Rules for "allergens" — list only what the source actually supports:
 - The menu explicitly states it (a legend, an icon, the word "gluten"/"lácteos"/etc. printed next
