@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { formatCents } from '@/src/lib/format';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
+import { ALLERGEN_KEYS, matchAllergenKeys, type AllergenKey } from '@/src/lib/allergens';
+import { ALLERGEN_ICONS, ALLERGEN_COLORS } from '@/components/branding/allergenIcons';
+import AllergenIconRow from '@/components/AllergenIconRow';
 
 type Item = {
   id: string;
@@ -12,6 +15,7 @@ type Item = {
   description: string | null;
   imageUrl?: string | null;
   vatRateBps: number;
+  allergens: string[];
 };
 
 type Category = {
@@ -413,6 +417,10 @@ export default function MenuManagementPage({
                                 })}
                               </span>
                             </p>
+
+                            {item.allergens.length > 0 && (
+                              <AllergenIconRow allergens={item.allergens} size={18} className="mt-1.5" />
+                            )}
                           </div>
 
                           <div className="flex flex-wrap gap-2">
@@ -560,6 +568,44 @@ function VatRateFields({
   );
 }
 
+function AllergenPicker({
+  selectedKeys,
+  onToggle,
+}: {
+  selectedKeys: Set<AllergenKey>;
+  onToggle: (key: AllergenKey) => void;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <div>
+      <label className="block text-xs text-ink/50 mb-1.5">
+        {t('menuTables.editor.allergensLabel')}
+      </label>
+      <div className="flex flex-wrap gap-1.5">
+        {ALLERGEN_KEYS.map((key) => {
+          const Icon = ALLERGEN_ICONS[key];
+          const active = selectedKeys.has(key);
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onToggle(key)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs transition-colors ${
+                active ? 'border-transparent text-white' : 'border-line text-ink/60'
+              }`}
+              style={active ? { background: ALLERGEN_COLORS[key] } : undefined}
+            >
+              <Icon size={14} />
+              {t(`allergens.${key}`)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function NewItemForm({
   restaurantId,
   categoryId,
@@ -578,8 +624,18 @@ function NewItemForm({
   const [imageUrl, setImageUrl] = useState('');
   const [vatChoice, setVatChoice] = useState('1000');
   const [vatCustomPercent, setVatCustomPercent] = useState('');
+  const [allergenKeys, setAllergenKeys] = useState<Set<AllergenKey>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function toggleAllergen(key: AllergenKey) {
+    setAllergenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -634,6 +690,7 @@ function NewItemForm({
             priceCents: Math.round(numericPrice * 100),
             imageUrl: imageUrl.trim() || undefined,
             vatRateBps,
+            allergens: Array.from(allergenKeys).map((key) => t(`allergens.${key}`)),
             modifiers: [],
           }),
         }
@@ -704,6 +761,8 @@ function NewItemForm({
         onCustomPercentChange={setVatCustomPercent}
       />
 
+      <AllergenPicker selectedKeys={allergenKeys} onToggle={toggleAllergen} />
+
       {error && (
         <p className="text-sm text-red-700">{error}</p>
       )}
@@ -762,8 +821,20 @@ function EditItemForm({
       ? ''
       : (item.vatRateBps / 100).toString()
   );
+  const [allergenKeys, setAllergenKeys] = useState<Set<AllergenKey>>(
+    () => new Set(matchAllergenKeys(item.allergens))
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function toggleAllergen(key: AllergenKey) {
+    setAllergenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -817,6 +888,7 @@ function EditItemForm({
             priceCents: Math.round(numericPrice * 100),
             imageUrl: imageUrl.trim() || null,
             vatRateBps,
+            allergens: Array.from(allergenKeys).map((key) => t(`allergens.${key}`)),
           }),
         }
       );
@@ -883,6 +955,8 @@ function EditItemForm({
         customPercent={vatCustomPercent}
         onCustomPercentChange={setVatCustomPercent}
       />
+
+      <AllergenPicker selectedKeys={allergenKeys} onToggle={toggleAllergen} />
 
       {error && (
         <p className="text-sm text-red-700">{error}</p>

@@ -16,6 +16,7 @@ const patchSchema = z.object({
   // a legal/accounting judgment call for the restaurant, never guessed
   // here; this just accepts whatever rate they specify.
   vatRateBps: z.number().int().min(0).max(10000).optional(),
+  allergens: z.array(z.string().max(40)).max(20).optional(),
 });
 
 // Scoped by BOTH itemId and restaurantId in every query below — this is
