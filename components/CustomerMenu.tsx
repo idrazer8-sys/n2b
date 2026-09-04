@@ -14,6 +14,40 @@ import { FONT_PAIRINGS, isFontPairingKey, googleFontsHref } from '@/src/lib/font
 // (bg-[...]/5) can't apply to an arbitrary CSS var() value, since it needs
 // to know the underlying channels to blend — this does that blending
 // directly instead.
+// A restaurant-chosen photo (from their own menu-photo-import), blurred and
+// washed with the paper background color so it reads as ambience behind
+// the list rather than competing with the actual menu text. Not AI-edited
+// — see Restaurant.menuBackgroundUrl in schema.prisma for why (Gemini's
+// image-editing models aren't available on this project's free-tier key).
+function MenuBackground({ url }: { url: string | null }) {
+  if (!url) return null;
+
+  return (
+    // Needs a NEGATIVE z-index specifically. Per the CSS stacking-context
+    // order, a positioned descendant with z-index:auto (0) paints AFTER
+    // every normal-flow static child (our <header>/<main>) regardless of
+    // DOM order — reproduced directly: with z-index:auto this div painted
+    // OVER the menu text, hiding it completely. A negative z-index moves
+    // it to the step that paints BEFORE static in-flow content instead.
+    // This only works because the wrapper's own opaque background fill is
+    // removed whenever a background photo is set (see the className below)
+    // — with that fill still present, a negative z-index sibling paints
+    // behind IT too and is invisible either way (also reproduced).
+    <div className="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+      <div
+        className="absolute inset-0 scale-110"
+        style={{
+          backgroundImage: `url(${url})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'blur(18px)',
+        }}
+      />
+      <div className="absolute inset-0 bg-[#f7f3ec]/55" />
+    </div>
+  );
+}
+
 function withAlpha(hex: string, alpha: number): string {
   const clean = hex.replace('#', '');
   const full = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean;
@@ -66,6 +100,7 @@ type MenuResponse = {
     isOpen: boolean;
     brandPrimaryColor: string;
     brandFontPairing: string | null;
+    menuBackgroundUrl: string | null;
   };
   table: {
     id: string;
@@ -383,9 +418,12 @@ export default function CustomerMenu({
   if (partySize === null) {
     return (
       <div
-        className="min-h-screen bg-[#f7f3ec] text-[#29251f] font-body flex items-center justify-center px-6"
+        className={`relative min-h-screen text-[#29251f] font-body flex items-center justify-center px-6 ${
+          data.restaurant.menuBackgroundUrl ? '' : 'bg-[#f7f3ec]'
+        }`}
         style={brandStyle}
       >
+        <MenuBackground url={data.restaurant.menuBackgroundUrl} />
         <div className="w-full max-w-xs text-center">
           {data.restaurant.logoUrl ? (
             <img
@@ -474,9 +512,12 @@ export default function CustomerMenu({
 
   return (
     <div
-      className="min-h-screen bg-[#f7f3ec] text-[#29251f] font-body pb-32"
+      className={`relative min-h-screen text-[#29251f] font-body pb-32 ${
+        data.restaurant.menuBackgroundUrl ? '' : 'bg-[#f7f3ec]'
+      }`}
       style={brandStyle}
     >
+      <MenuBackground url={data.restaurant.menuBackgroundUrl} />
       <header className="bg-[#f7f3ec] border-b border-[#29251f]/10">
         <div className="max-w-2xl mx-auto px-5 pt-5">
           <div className="flex justify-end">

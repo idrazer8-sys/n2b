@@ -17,6 +17,17 @@ const schema = z.object({
   brandPrimaryColor: z.string().regex(/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/).optional(),
   // Closed list, not free text — see FONT_PAIRING_KEYS in fontPairings.ts.
   brandFontPairing: z.enum(FONT_PAIRING_KEYS as [string, ...string[]]).nullable().optional(),
+  // A data: URL, not an arbitrary external URL — this is always a photo
+  // the manager themselves uploaded (via the menu-photo-import flow),
+  // re-submitted as base64. 4M chars (~3MB raw) is generous headroom over
+  // what the import flow's own client-side resize (max 1600px, JPEG q=0.82)
+  // actually produces.
+  menuBackgroundUrl: z
+    .string()
+    .regex(/^data:image\/(jpeg|jpg|png|webp);base64,/)
+    .max(4_000_000)
+    .nullable()
+    .optional(),
 });
 
 type RouteContext = {
@@ -57,6 +68,7 @@ export async function GET(
         timezone: true,
         brandPrimaryColor: true,
         brandFontPairing: true,
+        menuBackgroundUrl: true,
         isOpen: true,
         isActive: true,
         googleReviewUrl: true,
@@ -183,6 +195,9 @@ export async function PATCH(
         ...(body.brandFontPairing !== undefined
           ? { brandFontPairing: body.brandFontPairing }
           : {}),
+        ...(body.menuBackgroundUrl !== undefined
+          ? { menuBackgroundUrl: body.menuBackgroundUrl }
+          : {}),
         totalServiceSlaSeconds: total,
       },
       select: {
@@ -198,6 +213,7 @@ export async function PATCH(
         timezone: true,
         brandPrimaryColor: true,
         brandFontPairing: true,
+        menuBackgroundUrl: true,
         isOpen: true,
         isActive: true,
         googleReviewUrl: true,

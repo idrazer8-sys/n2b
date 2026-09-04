@@ -88,6 +88,10 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.brandFontRusticHandwritten': 'Rústico y artesanal',
     'dashboardCore.settings.brandFontBoldModern': 'Moderno y atrevido',
     'dashboardCore.settings.brandFontSample': 'Tu Restaurante',
+    'dashboardCore.settings.menuBackgroundLabel': 'Fondo de la carta',
+    'dashboardCore.settings.removeMenuBackground': 'Quitar fondo',
+    'dashboardCore.settings.menuBackgroundHelp':
+      'Para cambiarlo por otra foto, vuelve a importar el menú desde fotos.',
     'dashboardCore.settings.slaHeading': 'Acuerdos de nivel de servicio',
     'dashboardCore.settings.slaSubtitle':
       'Configura los objetivos que usa la analítica para identificar un servicio lento.',
@@ -265,6 +269,10 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.brandFontRusticHandwritten': 'Rustic & handwritten',
     'dashboardCore.settings.brandFontBoldModern': 'Bold & modern',
     'dashboardCore.settings.brandFontSample': 'Your Restaurant',
+    'dashboardCore.settings.menuBackgroundLabel': 'Menu background',
+    'dashboardCore.settings.removeMenuBackground': 'Remove background',
+    'dashboardCore.settings.menuBackgroundHelp':
+      'To change it to a different photo, re-import your menu from photos.',
     'dashboardCore.settings.slaHeading': 'Service Level Agreements',
     'dashboardCore.settings.slaSubtitle':
       'Configure the targets used by Analytics to identify slow service.',
@@ -443,6 +451,10 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.brandFontRusticHandwritten': 'Rústico e artesanal',
     'dashboardCore.settings.brandFontBoldModern': 'Moderno e arrojado',
     'dashboardCore.settings.brandFontSample': 'O Seu Restaurante',
+    'dashboardCore.settings.menuBackgroundLabel': 'Fundo do menu',
+    'dashboardCore.settings.removeMenuBackground': 'Remover fundo',
+    'dashboardCore.settings.menuBackgroundHelp':
+      'Para o substituir por outra foto, volte a importar o menu a partir de fotos.',
     'dashboardCore.settings.slaHeading': 'Acordos de nível de serviço',
     'dashboardCore.settings.slaSubtitle':
       'Configure os objetivos usados pelas Análises para identificar um serviço lento.',
@@ -630,6 +642,10 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.brandFontRusticHandwritten': 'Rustikal & handschriftlich',
     'dashboardCore.settings.brandFontBoldModern': 'Kräftig & modern',
     'dashboardCore.settings.brandFontSample': 'Dein Restaurant',
+    'dashboardCore.settings.menuBackgroundLabel': 'Speisekarten-Hintergrund',
+    'dashboardCore.settings.removeMenuBackground': 'Hintergrund entfernen',
+    'dashboardCore.settings.menuBackgroundHelp':
+      'Um ihn durch ein anderes Foto zu ersetzen, importiere die Speisekarte erneut aus Fotos.',
     'dashboardCore.settings.slaHeading': 'Service-Level-Agreements',
     'dashboardCore.settings.slaSubtitle':
       'Konfiguriere die Ziele, die von den Analysen verwendet werden, um langsamen Service zu erkennen.',
@@ -813,6 +829,10 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.brandFontRusticHandwritten': 'Rustique et manuscrit',
     'dashboardCore.settings.brandFontBoldModern': 'Audacieux et moderne',
     'dashboardCore.settings.brandFontSample': 'Votre Restaurant',
+    'dashboardCore.settings.menuBackgroundLabel': 'Arrière-plan du menu',
+    'dashboardCore.settings.removeMenuBackground': "Retirer l'arrière-plan",
+    'dashboardCore.settings.menuBackgroundHelp':
+      "Pour le remplacer par une autre photo, réimportez le menu à partir de photos.",
     'dashboardCore.settings.slaHeading': 'Accords de niveau de service',
     'dashboardCore.settings.slaSubtitle':
       'Configurez les objectifs utilisés par les statistiques pour identifier un service lent.',

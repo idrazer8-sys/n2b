@@ -76,6 +76,15 @@ model Restaurant {
   // server-side — never free text, since an arbitrary Google Fonts family
   // name could not exist or render badly at menu sizes.
   brandFontPairing       String?
+  // A data: URL (base64) of a photo the manager chose — typically one of
+  // their own uploaded menu photos — used as a blurred, tinted background
+  // wash behind their online menu (see CustomerMenu.tsx). This is the raw
+  // photo, never AI-edited: Gemini's image generation/editing models are
+  // not available on this project's free-tier API key (verified directly:
+  // both image-gen models tried returned a hard 0-quota 429, not a
+  // transient rate limit), so there is no automatic text removal or
+  // relayout — just the photo itself, softened client-side for legibility.
+  menuBackgroundUrl      String?
   isOpen                 Boolean           @default(true)
   isActive               Boolean           @default(true)
   allowPayAtRestaurant   Boolean           @default(true)

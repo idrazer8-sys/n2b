@@ -136,6 +136,8 @@ export default function MenuImportPage() {
   const [draft, setDraft] = useState<DraftCategory[]>([]);
   const [branding, setBranding] = useState<BrandingSuggestion | null>(null);
   const [applyBranding, setApplyBranding] = useState(true);
+  const [applyBackground, setApplyBackground] = useState(true);
+  const [backgroundPhotoIndex, setBackgroundPhotoIndex] = useState(0);
 
   // Computed straight from the draft, not asked of the AI — a blank price
   // or a repeated name is something the app can just check deterministically,
@@ -491,14 +493,26 @@ export default function MenuImportPage() {
       // Best-effort: a rejected branding update shouldn't block the menu
       // itself from having published — the manager can still set it by
       // hand in Settings.
-      if (applyBranding && branding && (branding.accentColor || branding.fontPairing)) {
+      const backgroundPhoto = previews[backgroundPhotoIndex] ?? null;
+
+      if (
+        (applyBranding && branding && (branding.accentColor || branding.fontPairing)) ||
+        (applyBackground && backgroundPhoto)
+      ) {
         await fetch(`/api/restaurants/${restaurantId}/settings`, {
           method: 'PATCH',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...(branding.accentColor ? { brandPrimaryColor: branding.accentColor } : {}),
-            ...(branding.fontPairing ? { brandFontPairing: branding.fontPairing } : {}),
+            ...(applyBranding && branding?.accentColor
+              ? { brandPrimaryColor: branding.accentColor }
+              : {}),
+            ...(applyBranding && branding?.fontPairing
+              ? { brandFontPairing: branding.fontPairing }
+              : {}),
+            ...(applyBackground && backgroundPhoto
+              ? { menuBackgroundUrl: backgroundPhoto }
+              : {}),
           }),
         }).catch(() => {});
       }
@@ -822,6 +836,64 @@ export default function MenuImportPage() {
 
               <p className="mt-3 text-xs text-ink/40">
                 {t('menuTables.import.brandingHint')}
+              </p>
+            </div>
+          )}
+
+          {previews.length > 0 && (
+            <div className="mt-8 border border-line rounded-2xl p-5">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <h3 className="text-sm font-medium uppercase tracking-[0.1em] text-ink/60">
+                  {t('menuTables.import.backgroundHeading')}
+                </h3>
+
+                <label className="flex items-center gap-2 text-xs text-ink/60">
+                  <input
+                    type="checkbox"
+                    checked={applyBackground}
+                    onChange={(event) => setApplyBackground(event.target.checked)}
+                  />
+                  {t('menuTables.import.applyBackground')}
+                </label>
+              </div>
+
+              <div className="relative h-32 w-full max-w-sm overflow-hidden rounded-xl border border-line">
+                <div
+                  className="absolute inset-0 scale-110"
+                  style={{
+                    backgroundImage: `url(${previews[backgroundPhotoIndex]})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    filter: 'blur(18px)',
+                  }}
+                />
+                <div className="absolute inset-0 bg-[#f7f3ec]/55" />
+                <div className="relative flex h-full items-center justify-center">
+                  <span className="font-display text-lg text-[#29251f]">
+                    {t('menuTables.import.backgroundPreviewSample')}
+                  </span>
+                </div>
+              </div>
+
+              {previews.length > 1 && (
+                <div className="mt-3 flex gap-2">
+                  {previews.map((src, index) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={index}
+                      src={src}
+                      onClick={() => setBackgroundPhotoIndex(index)}
+                      alt={t('menuTables.import.menuPhotoAlt', { number: index + 1 })}
+                      className={`h-12 w-12 cursor-pointer rounded-md object-cover border-2 ${
+                        index === backgroundPhotoIndex ? 'border-ink' : 'border-line'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <p className="mt-3 text-xs text-ink/40">
+                {t('menuTables.import.backgroundHint')}
               </p>
             </div>
           )}

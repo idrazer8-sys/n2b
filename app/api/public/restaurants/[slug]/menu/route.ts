@@ -84,6 +84,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       isOpen: restaurant.isOpen,
       brandPrimaryColor: restaurant.brandPrimaryColor,
       brandFontPairing: restaurant.brandFontPairing,
+      menuBackgroundUrl: restaurant.menuBackgroundUrl,
     },
     table: { id: table.id, label: table.label },
     session: { id: customerSession.id, partySize: customerSession.partySize },

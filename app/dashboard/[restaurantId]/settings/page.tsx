@@ -18,6 +18,7 @@ type Settings = {
   timezone: string;
   brandPrimaryColor: string;
   brandFontPairing: string | null;
+  menuBackgroundUrl: string | null;
   isOpen: boolean;
   isActive: boolean;
   googleReviewUrl: string | null;
@@ -86,6 +87,9 @@ export default function SettingsPage() {
     useState('');
 
   const [togglingOpen, setTogglingOpen] =
+    useState(false);
+
+  const [removingBackground, setRemovingBackground] =
     useState(false);
 
   useEffect(() => {
@@ -314,6 +318,44 @@ export default function SettingsPage() {
     }
   }
 
+  async function removeBackground() {
+    if (!settings) return;
+
+    setRemovingBackground(true);
+    setError('');
+
+    try {
+      const response = await fetch(
+        `/api/restaurants/${restaurantId}/settings`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ menuBackgroundUrl: null }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || t('dashboardCore.settings.unableToSave')
+        );
+      }
+
+      setSettings((current) =>
+        current ? { ...current, menuBackgroundUrl: null } : current
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('dashboardCore.settings.unableToSave')
+      );
+    } finally {
+      setRemovingBackground(false);
+    }
+  }
+
   const calculatedTotal =
     acceptanceSla !== '' &&
     kitchenSla !== '' &&
@@ -536,6 +578,40 @@ export default function SettingsPage() {
             {t('dashboardCore.settings.brandFontSample')}
           </p>
         </div>
+
+        {settings?.menuBackgroundUrl && (
+          <div className="mt-4 border-t border-line pt-4">
+            <label className={labelClass}>
+              {t('dashboardCore.settings.menuBackgroundLabel')}
+            </label>
+
+            <div className="flex items-center gap-3">
+              <div
+                className="h-14 w-14 rounded-lg border border-line shrink-0"
+                style={{
+                  backgroundImage: `url(${settings.menuBackgroundUrl})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={removeBackground}
+                disabled={removingBackground}
+                className="text-xs border border-line rounded-full px-3 py-1.5 disabled:opacity-50"
+              >
+                {removingBackground
+                  ? t('common.saving')
+                  : t('dashboardCore.settings.removeMenuBackground')}
+              </button>
+            </div>
+
+            <p className="mt-2 text-xs text-ink/50">
+              {t('dashboardCore.settings.menuBackgroundHelp')}
+            </p>
+          </div>
+        )}
       </section>
 
       <section className="border border-line rounded-xl p-5">

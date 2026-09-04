@@ -107,6 +107,11 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.brandingFontSample': 'Tu Restaurante',
     'menuTables.import.brandingHint':
       'La IA sugirió estos visuales a partir de las fotos. Puedes desmarcar la casilla para no aplicarlos, o cambiarlos luego en Ajustes.',
+    'menuTables.import.backgroundHeading': 'Fondo de la carta',
+    'menuTables.import.applyBackground': 'Usar como fondo de mi carta',
+    'menuTables.import.backgroundPreviewSample': 'Así se vería',
+    'menuTables.import.backgroundHint':
+      'Es tu propia foto, difuminada y atenuada para que el texto siga siendo legible — no borramos ni recolocamos nada de la foto original. Puedes cambiarla luego en Ajustes.',
     'menuTables.import.foundSummary':
       'Hemos encontrado {{items}} productos, {{categories}} categorías y {{modifiers}} modificadores.',
     'menuTables.import.foundIssues': '{{count}} necesitan revisión antes de publicar.',
@@ -277,6 +282,11 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.brandingFontSample': 'Your Restaurant',
     'menuTables.import.brandingHint':
       "The AI suggested this look from the photos. Uncheck the box to skip it, or change it later in Settings.",
+    'menuTables.import.backgroundHeading': 'Menu background',
+    'menuTables.import.applyBackground': 'Use as my menu background',
+    'menuTables.import.backgroundPreviewSample': "That's how it'd look",
+    'menuTables.import.backgroundHint':
+      "It's your own photo, blurred and dimmed so the text stays readable — nothing in the original photo is erased or moved. You can change it later in Settings.",
     'menuTables.import.foundSummary':
       'We found {{items}} items, {{categories}} categories and {{modifiers}} modifiers.',
     'menuTables.import.foundIssues': '{{count}} need review before publishing.',
@@ -456,6 +466,11 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.brandingFontSample': 'O Seu Restaurante',
     'menuTables.import.brandingHint':
       'A IA sugeriu esta estética a partir das fotos. Desmarque a caixa para não aplicar, ou altere mais tarde em Definições.',
+    'menuTables.import.backgroundHeading': 'Fundo do menu',
+    'menuTables.import.applyBackground': 'Usar como fundo do meu menu',
+    'menuTables.import.backgroundPreviewSample': 'Assim ficaria',
+    'menuTables.import.backgroundHint':
+      'É a sua própria foto, desfocada e suavizada para o texto continuar legível — nada na foto original é apagado ou movido. Pode alterá-la mais tarde em Definições.',
     'menuTables.import.foundSummary':
       'Encontrámos {{items}} artigos, {{categories}} categorias e {{modifiers}} modificadores.',
     'menuTables.import.foundIssues': '{{count}} precisam de revisão antes de publicar.',
@@ -642,6 +657,11 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.brandingFontSample': 'Dein Restaurant',
     'menuTables.import.brandingHint':
       'Die KI hat dieses Erscheinungsbild anhand der Fotos vorgeschlagen. Entferne das Häkchen, um es nicht zu übernehmen, oder ändere es später in den Einstellungen.',
+    'menuTables.import.backgroundHeading': 'Menühintergrund',
+    'menuTables.import.applyBackground': 'Als Hintergrund meiner Speisekarte verwenden',
+    'menuTables.import.backgroundPreviewSample': 'So würde es aussehen',
+    'menuTables.import.backgroundHint':
+      'Es ist dein eigenes Foto, weichgezeichnet und abgedunkelt, damit der Text lesbar bleibt — im Originalfoto wird nichts gelöscht oder verschoben. Du kannst es später in den Einstellungen ändern.',
     'menuTables.import.foundSummary':
       'Wir haben {{items}} Artikel, {{categories}} Kategorien und {{modifiers}} Modifikatoren gefunden.',
     'menuTables.import.foundIssues':
@@ -828,6 +848,11 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.brandingFontSample': 'Votre Restaurant',
     'menuTables.import.brandingHint':
       "L'IA a suggéré cette esthétique à partir des photos. Décochez la case pour ne pas l'appliquer, ou changez-la plus tard dans les Paramètres.",
+    'menuTables.import.backgroundHeading': 'Arrière-plan du menu',
+    'menuTables.import.applyBackground': "Utiliser comme arrière-plan de mon menu",
+    'menuTables.import.backgroundPreviewSample': 'Voici à quoi ça ressemblerait',
+    'menuTables.import.backgroundHint':
+      "C'est votre propre photo, floutée et assombrie pour que le texte reste lisible — rien n'est effacé ni déplacé dans la photo originale. Vous pourrez la changer plus tard dans les Paramètres.",
     'menuTables.import.foundSummary':
       'Nous avons trouvé {{items}} articles, {{categories}} catégories et {{modifiers}} modificateurs.',
     'menuTables.import.foundIssues': '{{count}} nécessitent une vérification avant publication.',
