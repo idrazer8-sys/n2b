@@ -200,6 +200,16 @@ model MenuItem {
   ingredients  String[]       @default([])
   isAvailable  Boolean        @default(true)
   sortOrder    Int            @default(0)
+  // Basis points (1000 = 10.00%), not an enum — VAT classification depends
+  // on what the specific item legally is (e.g. Spain's reduced 10% for
+  // hostelry food/drink service vs. 21% general rate for certain other
+  // products/services), which only the restaurant or their accountant can
+  // correctly determine. Defaults to 1000 (10%, Spain's hostelry rate) as a
+  // reasonable starting point — never silently guessed beyond that default,
+  // and always editable per item. The manager-facing UI offers 4/10/21%
+  // as primary choices plus a custom percentage; the backend accepts any
+  // value in range rather than enforcing just those three.
+  vatRateBps   Int            @default(1000)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   category     MenuCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -310,6 +320,13 @@ model OrderItem {
   // menu item's allergens later, a historical order must keep showing what
   // was actually declared when it was served, not the current list.
   allergensSnapshot String[]          @default([])
+  // Snapshot of MenuItem.vatRateBps at the moment this line was ordered —
+  // same reasoning as nameSnapshot/unitPriceCents: a rate change to the
+  // menu item later must never alter a historical order's figures. NULL
+  // specifically means "this order predates VAT tracking" — reporting
+  // must show those as untracked rather than fabricating a rate; it is
+  // never a stand-in for a legitimate 0% rate, stored as the literal 0.
+  vatRateBpsSnapshot Int?
   notes           String?
   status          OrderItemStatus     @default(PENDING)
   sentToWaiterAt  DateTime?

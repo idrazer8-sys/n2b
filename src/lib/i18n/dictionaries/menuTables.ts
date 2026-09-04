@@ -49,6 +49,10 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.editor.enterValidPrice': 'Introduce un precio válido.',
     'menuTables.editor.enterValidVatRate':
       'Introduce un tipo de IVA válido (0-100%).',
+    'menuTables.editor.vatRateLabel': 'IVA',
+    'menuTables.editor.vatRateCustomOption': 'Personalizado…',
+    'menuTables.editor.vatRateCustomPlaceholder': '% personalizado',
+    'menuTables.editor.vatBadge': 'IVA {{rate}}%',
     'menuTables.editor.invalidImageUrl':
       'La URL de la imagen debe ser válida.',
     'menuTables.editor.dishNamePlaceholder': 'Nombre del plato',
@@ -202,6 +206,11 @@ export const menuTables: Record<Locale, Record<string, string>> = {
       'e.g. Starters, Pasta, Desserts',
     'menuTables.editor.enterItemName': 'Enter an item name.',
     'menuTables.editor.enterValidPrice': 'Enter a valid price.',
+    'menuTables.editor.enterValidVatRate': 'Enter a valid VAT rate (0-100%).',
+    'menuTables.editor.vatRateLabel': 'VAT',
+    'menuTables.editor.vatRateCustomOption': 'Custom…',
+    'menuTables.editor.vatRateCustomPlaceholder': 'Custom %',
+    'menuTables.editor.vatBadge': 'VAT {{rate}}%',
     'menuTables.editor.invalidImageUrl': 'Image URL must be valid.',
     'menuTables.editor.dishNamePlaceholder': 'Dish name',
     'menuTables.editor.pricePlaceholder': 'Price ({{currency}})',
@@ -356,6 +365,10 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.editor.enterValidPrice': 'Introduza um preço válido.',
     'menuTables.editor.enterValidVatRate':
       'Introduza uma taxa de IVA válida (0-100%).',
+    'menuTables.editor.vatRateLabel': 'IVA',
+    'menuTables.editor.vatRateCustomOption': 'Personalizado…',
+    'menuTables.editor.vatRateCustomPlaceholder': '% personalizada',
+    'menuTables.editor.vatBadge': 'IVA {{rate}}%',
     'menuTables.editor.invalidImageUrl': 'O URL da imagem tem de ser válido.',
     'menuTables.editor.dishNamePlaceholder': 'Nome do prato',
     'menuTables.editor.pricePlaceholder': 'Preço ({{currency}})',
@@ -521,6 +534,10 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.editor.enterValidPrice': 'Gib einen gültigen Preis ein.',
     'menuTables.editor.enterValidVatRate':
       'Gib einen gültigen Mehrwertsteuersatz ein (0-100%).',
+    'menuTables.editor.vatRateLabel': 'MwSt.',
+    'menuTables.editor.vatRateCustomOption': 'Benutzerdefiniert…',
+    'menuTables.editor.vatRateCustomPlaceholder': 'Benutzerdefiniert %',
+    'menuTables.editor.vatBadge': 'MwSt. {{rate}}%',
     'menuTables.editor.invalidImageUrl': 'Die Bild-URL muss gültig sein.',
     'menuTables.editor.dishNamePlaceholder': 'Gerichtname',
     'menuTables.editor.pricePlaceholder': 'Preis ({{currency}})',
@@ -686,6 +703,10 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.editor.enterValidPrice': 'Saisissez un prix valide.',
     'menuTables.editor.enterValidVatRate':
       'Saisissez un taux de TVA valide (0-100%).',
+    'menuTables.editor.vatRateLabel': 'TVA',
+    'menuTables.editor.vatRateCustomOption': 'Personnalisé…',
+    'menuTables.editor.vatRateCustomPlaceholder': '% personnalisé',
+    'menuTables.editor.vatBadge': 'TVA {{rate}}%',
     'menuTables.editor.invalidImageUrl':
       "L'URL de l'image doit être valide.",
     'menuTables.editor.dishNamePlaceholder': 'Nom du plat',

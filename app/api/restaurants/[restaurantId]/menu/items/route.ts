@@ -30,6 +30,12 @@ const itemSchema = z.object({
   ingredients: z.array(z.string().max(60)).max(40).default([]),
   isAvailable: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
+  // Basis points — 0 to 10000 (0% to 100%). Correct VAT classification is
+  // a legal/accounting judgment call for the restaurant, never guessed
+  // here; this just accepts whatever rate they specify. Omitted entirely
+  // falls back to the schema default (1000 = 10%) — see
+  // MenuItem.vatRateBps in schema.prisma.
+  vatRateBps: z.number().int().min(0).max(10000).optional(),
   modifiers: z.array(modifierSchema).max(15).default([]),
 });
 
@@ -60,6 +66,7 @@ export async function POST(req: NextRequest, { params }: { params: { restaurantI
         ingredients: body.ingredients,
         isAvailable: body.isAvailable,
         sortOrder: body.sortOrder,
+        ...(body.vatRateBps !== undefined ? { vatRateBps: body.vatRateBps } : {}),
         modifiers: {
           create: body.modifiers.map((m) => ({
             name: m.name,

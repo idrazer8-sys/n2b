@@ -15,6 +15,7 @@ const patchSchema = z.object({
   // Basis points — 0 to 10000 (0% to 100%). Correct VAT classification is
   // a legal/accounting judgment call for the restaurant, never guessed
   // here; this just accepts whatever rate they specify.
+  vatRateBps: z.number().int().min(0).max(10000).optional(),
 });
 
 // Scoped by BOTH itemId and restaurantId in every query below — this is

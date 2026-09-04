@@ -11,6 +11,7 @@ type Item = {
   isAvailable: boolean;
   description: string | null;
   imageUrl?: string | null;
+  vatRateBps: number;
 };
 
 type Category = {
@@ -401,11 +402,16 @@ export default function MenuManagementPage({
                               </p>
                             )}
 
-                            <p className="mt-2 text-sm tabular">
+                            <p className="mt-2 text-sm tabular flex items-center gap-2">
                               {formatCents(
                                 item.priceCents,
                                 currency
                               )}
+                              <span className="text-xs text-ink/40">
+                                {t('menuTables.editor.vatBadge', {
+                                  rate: (item.vatRateBps / 100).toString(),
+                                })}
+                              </span>
                             </p>
                           </div>
 
@@ -502,6 +508,58 @@ export default function MenuManagementPage({
   );
 }
 
+const VAT_PRESET_OPTIONS = ['400', '1000', '2100'];
+
+function VatRateFields({
+  choice,
+  onChoiceChange,
+  customPercent,
+  onCustomPercentChange,
+}: {
+  choice: string;
+  onChoiceChange: (value: string) => void;
+  customPercent: string;
+  onCustomPercentChange: (value: string) => void;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <div>
+      <label className="block text-xs text-ink/50 mb-1">
+        {t('menuTables.editor.vatRateLabel')}
+      </label>
+      <div className="flex items-center gap-2">
+        <select
+          value={choice}
+          onChange={(e) => onChoiceChange(e.target.value)}
+          className="border border-line rounded-lg px-3 py-2 text-sm bg-paper"
+        >
+          <option value="400">4%</option>
+          <option value="1000">10%</option>
+          <option value="2100">21%</option>
+          <option value="custom">
+            {t('menuTables.editor.vatRateCustomOption')}
+          </option>
+        </select>
+
+        {choice === 'custom' && (
+          <div className="flex items-center gap-1.5">
+            <input
+              required
+              inputMode="decimal"
+              value={customPercent}
+              onChange={(e) => onCustomPercentChange(e.target.value)}
+              placeholder={t('menuTables.editor.vatRateCustomPlaceholder')}
+              className="w-24 border border-line rounded-lg px-3 py-2 text-sm"
+            />
+            <span className="text-sm text-ink/50">%</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function NewItemForm({
   restaurantId,
   categoryId,
@@ -518,6 +576,8 @@ function NewItemForm({
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [vatChoice, setVatChoice] = useState('1000');
+  const [vatCustomPercent, setVatCustomPercent] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -534,6 +594,18 @@ function NewItemForm({
     if (!Number.isFinite(numericPrice) || numericPrice < 0) {
       setError(t('menuTables.editor.enterValidPrice'));
       return;
+    }
+
+    let vatRateBps: number;
+    if (vatChoice === 'custom') {
+      const numericVatRate = Number(vatCustomPercent);
+      if (!Number.isFinite(numericVatRate) || numericVatRate < 0 || numericVatRate > 100) {
+        setError(t('menuTables.editor.enterValidVatRate'));
+        return;
+      }
+      vatRateBps = Math.round(numericVatRate * 100);
+    } else {
+      vatRateBps = Number(vatChoice);
     }
 
     if (imageUrl.trim()) {
@@ -561,6 +633,7 @@ function NewItemForm({
             description: description.trim() || undefined,
             priceCents: Math.round(numericPrice * 100),
             imageUrl: imageUrl.trim() || undefined,
+            vatRateBps,
             modifiers: [],
           }),
         }
@@ -624,6 +697,13 @@ function NewItemForm({
         className="w-full border border-line rounded-lg px-3 py-2 text-sm"
       />
 
+      <VatRateFields
+        choice={vatChoice}
+        onChoiceChange={setVatChoice}
+        customPercent={vatCustomPercent}
+        onCustomPercentChange={setVatCustomPercent}
+      />
+
       {error && (
         <p className="text-sm text-red-700">{error}</p>
       )}
@@ -672,6 +752,16 @@ function EditItemForm({
   const [imageUrl, setImageUrl] = useState(
     item.imageUrl ?? ''
   );
+  const [vatChoice, setVatChoice] = useState(
+    VAT_PRESET_OPTIONS.includes(String(item.vatRateBps))
+      ? String(item.vatRateBps)
+      : 'custom'
+  );
+  const [vatCustomPercent, setVatCustomPercent] = useState(
+    VAT_PRESET_OPTIONS.includes(String(item.vatRateBps))
+      ? ''
+      : (item.vatRateBps / 100).toString()
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -688,6 +778,18 @@ function EditItemForm({
     if (!Number.isFinite(numericPrice) || numericPrice < 0) {
       setError(t('menuTables.editor.enterValidPrice'));
       return;
+    }
+
+    let vatRateBps: number;
+    if (vatChoice === 'custom') {
+      const numericVatRate = Number(vatCustomPercent);
+      if (!Number.isFinite(numericVatRate) || numericVatRate < 0 || numericVatRate > 100) {
+        setError(t('menuTables.editor.enterValidVatRate'));
+        return;
+      }
+      vatRateBps = Math.round(numericVatRate * 100);
+    } else {
+      vatRateBps = Number(vatChoice);
     }
 
     if (imageUrl.trim()) {
@@ -714,6 +816,7 @@ function EditItemForm({
             description: description.trim() || null,
             priceCents: Math.round(numericPrice * 100),
             imageUrl: imageUrl.trim() || null,
+            vatRateBps,
           }),
         }
       );
@@ -772,6 +875,13 @@ function EditItemForm({
         onChange={(e) => setImageUrl(e.target.value)}
         placeholder={t('menuTables.editor.imageUrlPlaceholder')}
         className="w-full border border-line rounded-lg px-3 py-2 text-sm"
+      />
+
+      <VatRateFields
+        choice={vatChoice}
+        onChoiceChange={setVatChoice}
+        customPercent={vatCustomPercent}
+        onCustomPercentChange={setVatCustomPercent}
       />
 
       {error && (
