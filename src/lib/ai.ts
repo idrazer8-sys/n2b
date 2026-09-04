@@ -24,7 +24,7 @@ import { z } from 'zod';
  * turn that into a friendly 400 response.
  */
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = 'gemini-3.6-flash';
 
 export class AiNotConfiguredError extends Error {
   constructor() {
