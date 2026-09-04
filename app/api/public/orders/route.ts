@@ -189,6 +189,8 @@ export async function POST(req: NextRequest) {
                         line.quantity,
                       lineTotalCents:
                         line.lineTotalCents,
+                      allergensSnapshot:
+                        line.allergensSnapshot,
                       notes:
                         line.notes,
                       modifiers: {

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatCents } from '@/src/lib/format';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import AllergenIconRow from '@/components/AllergenIconRow';
 
 type ModifierOption = {
   id: string;
@@ -548,7 +549,8 @@ export default function CustomerMenu({
                   )}
 
                   {item.allergens.length > 0 && (
-                    <p className="mt-2 text-[11px] uppercase tracking-[0.08em] text-[#29251f]/35">
+                    <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-[#29251f]/35">
+                      <AllergenIconRow allergens={item.allergens} />
                       {t('customerFlow.menu.contains', { allergens: item.allergens.join(', ') })}
                     </p>
                   )}
@@ -768,7 +770,8 @@ function ItemModal({
           </div>
 
           {item.allergens.length > 0 && (
-            <p className="mt-3 text-[11px] uppercase tracking-[0.08em] text-[#29251f]/35">
+            <p className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-[#29251f]/35">
+              <AllergenIconRow allergens={item.allergens} />
               {t('customerFlow.menu.contains', { allergens: item.allergens.join(', ') })}
             </p>
           )}

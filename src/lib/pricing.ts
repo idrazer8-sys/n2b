@@ -38,6 +38,7 @@ export async function priceCart(restaurantId: string, lines: CartLineInput[]) {
     quantity: number;
     unitPriceCents: number;
     lineTotalCents: number;
+    allergensSnapshot: string[];
     notes?: string;
     modifiers: Array<{ modifierOptionId: string; nameSnapshot: string; priceDeltaCentsSnapshot: number }>;
   }> = [];
@@ -109,6 +110,7 @@ export async function priceCart(restaurantId: string, lines: CartLineInput[]) {
       quantity: line.quantity,
       unitPriceCents,
       lineTotalCents,
+      allergensSnapshot: item.allergens,
       notes: line.notes?.slice(0, 280),
       modifiers: modifierSnapshots,
     });

@@ -306,6 +306,10 @@ model OrderItem {
   unitPriceCents  Int
   quantity        Int
   lineTotalCents  Int
+  // Same reasoning as nameSnapshot/unitPriceCents: if a manager edits the
+  // menu item's allergens later, a historical order must keep showing what
+  // was actually declared when it was served, not the current list.
+  allergensSnapshot String[]          @default([])
   notes           String?
   status          OrderItemStatus     @default(PENDING)
   sentToWaiterAt  DateTime?

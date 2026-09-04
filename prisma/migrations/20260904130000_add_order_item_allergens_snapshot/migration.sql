@@ -1,0 +1,1 @@
+ALTER TABLE "OrderItem" ADD COLUMN "allergensSnapshot" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

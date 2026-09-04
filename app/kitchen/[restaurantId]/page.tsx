@@ -7,6 +7,7 @@ import * as Sentry from '@sentry/nextjs';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import N2BLogo from '@/components/branding/N2BLogo';
+import AllergenIconRow from '@/components/AllergenIconRow';
 
 type Membership = {
   role: string;
@@ -36,6 +37,7 @@ type Order = {
     notes: string | null;
     status: 'PENDING' | 'SENT_TO_WAITER' | 'SERVED' | 'UNAVAILABLE';
     kitchenKind: 'FOOD' | 'DRINKS' | 'DESSERT';
+    allergensSnapshot: string[];
   }[];
 };
 
@@ -132,6 +134,10 @@ function KitchenOrderCard({
               >
                 {item.nameSnapshot}
               </span>
+
+              {item.allergensSnapshot.length > 0 && (
+                <AllergenIconRow allergens={item.allergensSnapshot} size={22} />
+              )}
 
               {item.status === 'UNAVAILABLE' && (
                 <span className="text-[10px] uppercase tracking-[0.08em] text-[#e2a5a5]">
