@@ -28,6 +28,12 @@ const schema = z.object({
     .max(4_000_000)
     .nullable()
     .optional(),
+  // Plain strings validated against a fixed list, not Prisma enums — same
+  // convention as brandFontPairing above.
+  menuLayoutMode: z.enum(['LIST', 'POSTER']).optional(),
+  menuBackgroundBlur: z.number().int().min(0).max(40).optional(),
+  menuBackgroundTint: z.number().min(0).max(1).optional(),
+  menuFontScale: z.enum(['small', 'medium', 'large']).optional(),
 });
 
 type RouteContext = {
@@ -69,6 +75,10 @@ export async function GET(
         brandPrimaryColor: true,
         brandFontPairing: true,
         menuBackgroundUrl: true,
+        menuLayoutMode: true,
+        menuBackgroundBlur: true,
+        menuBackgroundTint: true,
+        menuFontScale: true,
         isOpen: true,
         isActive: true,
         googleReviewUrl: true,
@@ -198,6 +208,18 @@ export async function PATCH(
         ...(body.menuBackgroundUrl !== undefined
           ? { menuBackgroundUrl: body.menuBackgroundUrl }
           : {}),
+        ...(body.menuLayoutMode !== undefined
+          ? { menuLayoutMode: body.menuLayoutMode }
+          : {}),
+        ...(body.menuBackgroundBlur !== undefined
+          ? { menuBackgroundBlur: body.menuBackgroundBlur }
+          : {}),
+        ...(body.menuBackgroundTint !== undefined
+          ? { menuBackgroundTint: body.menuBackgroundTint }
+          : {}),
+        ...(body.menuFontScale !== undefined
+          ? { menuFontScale: body.menuFontScale }
+          : {}),
         totalServiceSlaSeconds: total,
       },
       select: {
@@ -214,6 +236,10 @@ export async function PATCH(
         brandPrimaryColor: true,
         brandFontPairing: true,
         menuBackgroundUrl: true,
+        menuLayoutMode: true,
+        menuBackgroundBlur: true,
+        menuBackgroundTint: true,
+        menuFontScale: true,
         isOpen: true,
         isActive: true,
         googleReviewUrl: true,

@@ -8,6 +8,20 @@ import type { Locale } from '../locales';
  */
 export const menuTables: Record<Locale, Record<string, string>> = {
   es: {
+    // menu/poster/page.tsx
+    'menuTables.poster.title': 'Colocar platos sobre la foto',
+    'menuTables.poster.subtitle':
+      'Arrastra cada plato a su sitio sobre tu foto. Los que no coloques aparecerán en la lista normal debajo.',
+    'menuTables.poster.loading': 'Cargando…',
+    'menuTables.poster.noBackground':
+      'Todavía no tienes una foto de fondo. Impórtala desde "Importar desde fotos" o súbela en Ajustes.',
+    'menuTables.poster.couldNotLoad': 'No se pudo cargar.',
+    'menuTables.poster.couldNotSave': 'No se pudo guardar la posición.',
+    'menuTables.poster.unplacedHeading': 'Platos sin colocar',
+    'menuTables.poster.allPlaced': 'Has colocado todos los platos.',
+    'menuTables.poster.place': 'Colocar',
+    'menuTables.poster.remove': 'Quitar',
+    'menuTables.poster.dragHint': 'Arrastra las etiquetas sobre la foto para ajustar su posición.',
     // menu/page.tsx
     'menuTables.editor.eyebrow': 'Menú del restaurante',
     'menuTables.editor.heading': 'Menú',
@@ -112,12 +126,22 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.backgroundPreviewSample': 'Así se vería',
     'menuTables.import.backgroundHint':
       'Es tu propia foto, difuminada y atenuada para que el texto siga siendo legible — no borramos ni recolocamos nada de la foto original. Puedes cambiarla luego en Ajustes.',
-    'menuTables.import.foundSummary':
-      'Hemos encontrado {{items}} productos, {{categories}} categorías y {{modifiers}} modificadores.',
-    'menuTables.import.foundIssues': '{{count}} necesitan revisión antes de publicar.',
+    'menuTables.import.summaryDetected': '{{count}} productos detectados.',
+    'menuTables.import.summaryReady': '{{count}} productos listos.',
+    'menuTables.import.summaryNeedsAttention': '{{count}} necesitan tu atención.',
+    'menuTables.import.jumpToNext': 'Ver siguiente',
     'menuTables.import.issueMissingPrice': 'REVISAR PRECIO',
     'menuTables.import.issueDuplicateName': 'Nombre duplicado en esta categoría',
     'menuTables.import.issueEmptyCategory': 'Esta categoría no tiene artículos',
+    'menuTables.import.issueUncertainCategory': 'La IA no está segura de esta categoría',
+    'menuTables.import.issueLowConfidence': 'La IA no está segura de este producto',
+    'menuTables.import.needsReviewReason': 'La IA no está totalmente segura — revísalo',
+    'menuTables.import.uncertainField.name': 'Nombre por confirmar',
+    'menuTables.import.uncertainField.description': 'Descripción por confirmar',
+    'menuTables.import.uncertainField.price': 'Precio por confirmar',
+    'menuTables.import.uncertainField.allergens': 'Alérgenos por confirmar',
+    'menuTables.import.uncertainField.dietaryTags': 'Etiquetas dietéticas por confirmar',
+    'menuTables.import.uncertainField.modifiers': 'Modificadores por confirmar',
     'menuTables.import.fixIssuesBeforePublishing':
       'Corrige los avisos señalados antes de publicar.',
     'menuTables.import.modifierSingle': 'Elige uno',
@@ -192,6 +216,20 @@ export const menuTables: Record<Locale, Record<string, string>> = {
       'Esta página también muestra el pedido actual, la fase del pedido y el gasto completado de cada mesa.',
   },
   en: {
+    // menu/poster/page.tsx
+    'menuTables.poster.title': 'Place dishes on the photo',
+    'menuTables.poster.subtitle':
+      'Drag each dish into place on your photo. Anything you don\'t place shows up in the normal list below.',
+    'menuTables.poster.loading': 'Loading…',
+    'menuTables.poster.noBackground':
+      'You don\'t have a background photo yet. Import one from "Import from photos" or upload one in Settings.',
+    'menuTables.poster.couldNotLoad': 'Could not load.',
+    'menuTables.poster.couldNotSave': 'Could not save the position.',
+    'menuTables.poster.unplacedHeading': 'Unplaced dishes',
+    'menuTables.poster.allPlaced': 'You\'ve placed every dish.',
+    'menuTables.poster.place': 'Place',
+    'menuTables.poster.remove': 'Remove',
+    'menuTables.poster.dragHint': 'Drag the labels on the photo to adjust their position.',
     // menu/page.tsx
     'menuTables.editor.eyebrow': 'Restaurant menu',
     'menuTables.editor.heading': 'Menu',
@@ -287,12 +325,22 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.backgroundPreviewSample': "That's how it'd look",
     'menuTables.import.backgroundHint':
       "It's your own photo, blurred and dimmed so the text stays readable — nothing in the original photo is erased or moved. You can change it later in Settings.",
-    'menuTables.import.foundSummary':
-      'We found {{items}} items, {{categories}} categories and {{modifiers}} modifiers.',
-    'menuTables.import.foundIssues': '{{count}} need review before publishing.',
+    'menuTables.import.summaryDetected': '{{count}} items detected.',
+    'menuTables.import.summaryReady': '{{count}} items are ready.',
+    'menuTables.import.summaryNeedsAttention': '{{count}} need your attention.',
+    'menuTables.import.jumpToNext': 'Show next',
     'menuTables.import.issueMissingPrice': 'REVIEW PRICE',
     'menuTables.import.issueDuplicateName': 'Duplicate name in this category',
     'menuTables.import.issueEmptyCategory': 'This category has no items',
+    'menuTables.import.issueUncertainCategory': "The AI isn't sure about this category",
+    'menuTables.import.issueLowConfidence': "The AI isn't sure about this item",
+    'menuTables.import.needsReviewReason': "The AI isn't fully sure — please check",
+    'menuTables.import.uncertainField.name': 'Name needs confirming',
+    'menuTables.import.uncertainField.description': 'Description needs confirming',
+    'menuTables.import.uncertainField.price': 'Price needs confirming',
+    'menuTables.import.uncertainField.allergens': 'Allergens need confirming',
+    'menuTables.import.uncertainField.dietaryTags': 'Dietary tags need confirming',
+    'menuTables.import.uncertainField.modifiers': 'Modifiers need confirming',
     'menuTables.import.fixIssuesBeforePublishing':
       'Fix the flagged issues before publishing.',
     'menuTables.import.modifierSingle': 'Choose one',
@@ -366,6 +414,20 @@ export const menuTables: Record<Locale, Record<string, string>> = {
       'This page also shows the current order, order stage and completed spending for every table.',
   },
   pt: {
+    // menu/poster/page.tsx
+    'menuTables.poster.title': 'Colocar pratos na foto',
+    'menuTables.poster.subtitle':
+      'Arraste cada prato para o lugar certo na sua foto. O que não for colocado aparece na lista normal abaixo.',
+    'menuTables.poster.loading': 'A carregar…',
+    'menuTables.poster.noBackground':
+      'Ainda não tens uma foto de fundo. Importa uma em "Importar de fotos" ou carrega uma nas Definições.',
+    'menuTables.poster.couldNotLoad': 'Não foi possível carregar.',
+    'menuTables.poster.couldNotSave': 'Não foi possível guardar a posição.',
+    'menuTables.poster.unplacedHeading': 'Pratos por colocar',
+    'menuTables.poster.allPlaced': 'Colocaste todos os pratos.',
+    'menuTables.poster.place': 'Colocar',
+    'menuTables.poster.remove': 'Remover',
+    'menuTables.poster.dragHint': 'Arrasta as etiquetas na foto para ajustar a posição.',
     // menu/page.tsx
     'menuTables.editor.eyebrow': 'Menu do restaurante',
     'menuTables.editor.heading': 'Menu',
@@ -471,12 +533,22 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.backgroundPreviewSample': 'Assim ficaria',
     'menuTables.import.backgroundHint':
       'É a sua própria foto, desfocada e suavizada para o texto continuar legível — nada na foto original é apagado ou movido. Pode alterá-la mais tarde em Definições.',
-    'menuTables.import.foundSummary':
-      'Encontrámos {{items}} artigos, {{categories}} categorias e {{modifiers}} modificadores.',
-    'menuTables.import.foundIssues': '{{count}} precisam de revisão antes de publicar.',
+    'menuTables.import.summaryDetected': '{{count}} artigos detetados.',
+    'menuTables.import.summaryReady': '{{count}} artigos prontos.',
+    'menuTables.import.summaryNeedsAttention': '{{count}} precisam da sua atenção.',
+    'menuTables.import.jumpToNext': 'Ver seguinte',
     'menuTables.import.issueMissingPrice': 'REVER PREÇO',
     'menuTables.import.issueDuplicateName': 'Nome duplicado nesta categoria',
     'menuTables.import.issueEmptyCategory': 'Esta categoria não tem artigos',
+    'menuTables.import.issueUncertainCategory': 'A IA não tem a certeza sobre esta categoria',
+    'menuTables.import.issueLowConfidence': 'A IA não tem a certeza sobre este artigo',
+    'menuTables.import.needsReviewReason': 'A IA não tem a certeza absoluta — verifique',
+    'menuTables.import.uncertainField.name': 'Nome a confirmar',
+    'menuTables.import.uncertainField.description': 'Descrição a confirmar',
+    'menuTables.import.uncertainField.price': 'Preço a confirmar',
+    'menuTables.import.uncertainField.allergens': 'Alergénios a confirmar',
+    'menuTables.import.uncertainField.dietaryTags': 'Etiquetas dietéticas a confirmar',
+    'menuTables.import.uncertainField.modifiers': 'Modificadores a confirmar',
     'menuTables.import.fixIssuesBeforePublishing':
       'Corrija os avisos assinalados antes de publicar.',
     'menuTables.import.modifierSingle': 'Escolha um',
@@ -556,6 +628,20 @@ export const menuTables: Record<Locale, Record<string, string>> = {
       'Esta página também mostra o pedido atual, a fase do pedido e o gasto concluído de cada mesa.',
   },
   de: {
+    // menu/poster/page.tsx
+    'menuTables.poster.title': 'Gerichte auf dem Foto platzieren',
+    'menuTables.poster.subtitle':
+      'Ziehe jedes Gericht an seinen Platz auf deinem Foto. Nicht platzierte Gerichte erscheinen in der normalen Liste darunter.',
+    'menuTables.poster.loading': 'Wird geladen…',
+    'menuTables.poster.noBackground':
+      'Du hast noch kein Hintergrundfoto. Importiere eins über "Aus Fotos importieren" oder lade eins in den Einstellungen hoch.',
+    'menuTables.poster.couldNotLoad': 'Konnte nicht geladen werden.',
+    'menuTables.poster.couldNotSave': 'Position konnte nicht gespeichert werden.',
+    'menuTables.poster.unplacedHeading': 'Nicht platzierte Gerichte',
+    'menuTables.poster.allPlaced': 'Du hast alle Gerichte platziert.',
+    'menuTables.poster.place': 'Platzieren',
+    'menuTables.poster.remove': 'Entfernen',
+    'menuTables.poster.dragHint': 'Ziehe die Beschriftungen auf dem Foto, um ihre Position anzupassen.',
     // menu/page.tsx
     'menuTables.editor.eyebrow': 'Restaurantmenü',
     'menuTables.editor.heading': 'Speisekarte',
@@ -662,13 +748,22 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.backgroundPreviewSample': 'So würde es aussehen',
     'menuTables.import.backgroundHint':
       'Es ist dein eigenes Foto, weichgezeichnet und abgedunkelt, damit der Text lesbar bleibt — im Originalfoto wird nichts gelöscht oder verschoben. Du kannst es später in den Einstellungen ändern.',
-    'menuTables.import.foundSummary':
-      'Wir haben {{items}} Artikel, {{categories}} Kategorien und {{modifiers}} Modifikatoren gefunden.',
-    'menuTables.import.foundIssues':
-      '{{count}} müssen vor der Veröffentlichung überprüft werden.',
+    'menuTables.import.summaryDetected': '{{count}} Artikel erkannt.',
+    'menuTables.import.summaryReady': '{{count}} Artikel sind bereit.',
+    'menuTables.import.summaryNeedsAttention': '{{count}} benötigen deine Aufmerksamkeit.',
+    'menuTables.import.jumpToNext': 'Nächsten anzeigen',
     'menuTables.import.issueMissingPrice': 'PREIS PRÜFEN',
     'menuTables.import.issueDuplicateName': 'Doppelter Name in dieser Kategorie',
     'menuTables.import.issueEmptyCategory': 'Diese Kategorie hat keine Artikel',
+    'menuTables.import.issueUncertainCategory': 'Die KI ist sich bei dieser Kategorie nicht sicher',
+    'menuTables.import.issueLowConfidence': 'Die KI ist sich bei diesem Artikel nicht sicher',
+    'menuTables.import.needsReviewReason': 'Die KI ist sich nicht ganz sicher — bitte prüfen',
+    'menuTables.import.uncertainField.name': 'Name zu bestätigen',
+    'menuTables.import.uncertainField.description': 'Beschreibung zu bestätigen',
+    'menuTables.import.uncertainField.price': 'Preis zu bestätigen',
+    'menuTables.import.uncertainField.allergens': 'Allergene zu bestätigen',
+    'menuTables.import.uncertainField.dietaryTags': 'Ernährungshinweise zu bestätigen',
+    'menuTables.import.uncertainField.modifiers': 'Zusatzoptionen zu bestätigen',
     'menuTables.import.fixIssuesBeforePublishing':
       'Behebe die markierten Probleme vor der Veröffentlichung.',
     'menuTables.import.modifierSingle': 'Eine Wahl',
@@ -749,6 +844,20 @@ export const menuTables: Record<Locale, Record<string, string>> = {
       'Diese Seite zeigt außerdem die aktuelle Bestellung, den Bestellstatus und die abgeschlossenen Ausgaben für jeden Tisch.',
   },
   fr: {
+    // menu/poster/page.tsx
+    'menuTables.poster.title': 'Placer les plats sur la photo',
+    'menuTables.poster.subtitle':
+      'Faites glisser chaque plat à sa place sur votre photo. Ceux que vous ne placez pas apparaissent dans la liste normale ci-dessous.',
+    'menuTables.poster.loading': 'Chargement…',
+    'menuTables.poster.noBackground':
+      'Vous n\'avez pas encore de photo de fond. Importez-en une depuis "Importer depuis des photos" ou téléchargez-en une dans les Paramètres.',
+    'menuTables.poster.couldNotLoad': 'Impossible de charger.',
+    'menuTables.poster.couldNotSave': 'Impossible d\'enregistrer la position.',
+    'menuTables.poster.unplacedHeading': 'Plats non placés',
+    'menuTables.poster.allPlaced': 'Vous avez placé tous les plats.',
+    'menuTables.poster.place': 'Placer',
+    'menuTables.poster.remove': 'Retirer',
+    'menuTables.poster.dragHint': 'Faites glisser les étiquettes sur la photo pour ajuster leur position.',
     // menu/page.tsx
     'menuTables.editor.eyebrow': 'Menu du restaurant',
     'menuTables.editor.heading': 'Menu',
@@ -853,12 +962,22 @@ export const menuTables: Record<Locale, Record<string, string>> = {
     'menuTables.import.backgroundPreviewSample': 'Voici à quoi ça ressemblerait',
     'menuTables.import.backgroundHint':
       "C'est votre propre photo, floutée et assombrie pour que le texte reste lisible — rien n'est effacé ni déplacé dans la photo originale. Vous pourrez la changer plus tard dans les Paramètres.",
-    'menuTables.import.foundSummary':
-      'Nous avons trouvé {{items}} articles, {{categories}} catégories et {{modifiers}} modificateurs.',
-    'menuTables.import.foundIssues': '{{count}} nécessitent une vérification avant publication.',
+    'menuTables.import.summaryDetected': '{{count}} articles détectés.',
+    'menuTables.import.summaryReady': '{{count}} articles sont prêts.',
+    'menuTables.import.summaryNeedsAttention': '{{count}} nécessitent votre attention.',
+    'menuTables.import.jumpToNext': 'Voir le suivant',
     'menuTables.import.issueMissingPrice': 'VÉRIFIER LE PRIX',
     'menuTables.import.issueDuplicateName': 'Nom en double dans cette catégorie',
     'menuTables.import.issueEmptyCategory': "Cette catégorie n'a aucun article",
+    'menuTables.import.issueUncertainCategory': "L'IA n'est pas sûre de cette catégorie",
+    'menuTables.import.issueLowConfidence': "L'IA n'est pas sûre de cet article",
+    'menuTables.import.needsReviewReason': "L'IA n'est pas tout à fait sûre — merci de vérifier",
+    'menuTables.import.uncertainField.name': 'Nom à confirmer',
+    'menuTables.import.uncertainField.description': 'Description à confirmer',
+    'menuTables.import.uncertainField.price': 'Prix à confirmer',
+    'menuTables.import.uncertainField.allergens': 'Allergènes à confirmer',
+    'menuTables.import.uncertainField.dietaryTags': 'Étiquettes diététiques à confirmer',
+    'menuTables.import.uncertainField.modifiers': 'Modificateurs à confirmer',
     'menuTables.import.fixIssuesBeforePublishing':
       'Corrigez les problèmes signalés avant de publier.',
     'menuTables.import.modifierSingle': 'Choisir un',

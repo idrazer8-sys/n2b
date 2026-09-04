@@ -92,6 +92,20 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.removeMenuBackground': 'Quitar fondo',
     'dashboardCore.settings.menuBackgroundHelp':
       'Para cambiarlo por otra foto, vuelve a importar el menú desde fotos.',
+    'dashboardCore.settings.menuFontScaleLabel': 'Tamaño del texto de la carta',
+    'dashboardCore.settings.menuFontScaleSmall': 'Pequeño',
+    'dashboardCore.settings.menuFontScaleMedium': 'Mediano',
+    'dashboardCore.settings.menuFontScaleLarge': 'Grande',
+    'dashboardCore.settings.menuLayoutModeLabel': 'Estilo de la carta online',
+    'dashboardCore.settings.menuLayoutModeList': 'Lista',
+    'dashboardCore.settings.menuLayoutModePoster': 'Póster (foto real)',
+    'dashboardCore.settings.menuLayoutModeListHelp':
+      'La carta se muestra como una lista, con tu foto difuminada de fondo.',
+    'dashboardCore.settings.menuLayoutModePosterHelp':
+      'La carta se muestra sobre tu foto real (sin difuminar), con cada plato colocado a mano donde tú decidas.',
+    'dashboardCore.settings.editPosterPositionsLink': 'Colocar los platos sobre la foto →',
+    'dashboardCore.settings.menuBackgroundBlurLabel': 'Desenfoque del fondo',
+    'dashboardCore.settings.menuBackgroundTintLabel': 'Opacidad del velo',
     'dashboardCore.settings.slaHeading': 'Acuerdos de nivel de servicio',
     'dashboardCore.settings.slaSubtitle':
       'Configura los objetivos que usa la analítica para identificar un servicio lento.',
@@ -273,6 +287,20 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.removeMenuBackground': 'Remove background',
     'dashboardCore.settings.menuBackgroundHelp':
       'To change it to a different photo, re-import your menu from photos.',
+    'dashboardCore.settings.menuFontScaleLabel': 'Menu text size',
+    'dashboardCore.settings.menuFontScaleSmall': 'Small',
+    'dashboardCore.settings.menuFontScaleMedium': 'Medium',
+    'dashboardCore.settings.menuFontScaleLarge': 'Large',
+    'dashboardCore.settings.menuLayoutModeLabel': 'Online menu style',
+    'dashboardCore.settings.menuLayoutModeList': 'List',
+    'dashboardCore.settings.menuLayoutModePoster': 'Poster (real photo)',
+    'dashboardCore.settings.menuLayoutModeListHelp':
+      'The menu shows as a list, with your blurred photo behind it.',
+    'dashboardCore.settings.menuLayoutModePosterHelp':
+      'The menu shows over your real photo (not blurred), with each dish placed by hand wherever you decide.',
+    'dashboardCore.settings.editPosterPositionsLink': 'Place dishes on the photo →',
+    'dashboardCore.settings.menuBackgroundBlurLabel': 'Background blur',
+    'dashboardCore.settings.menuBackgroundTintLabel': 'Tint opacity',
     'dashboardCore.settings.slaHeading': 'Service Level Agreements',
     'dashboardCore.settings.slaSubtitle':
       'Configure the targets used by Analytics to identify slow service.',
@@ -455,6 +483,20 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.removeMenuBackground': 'Remover fundo',
     'dashboardCore.settings.menuBackgroundHelp':
       'Para o substituir por outra foto, volte a importar o menu a partir de fotos.',
+    'dashboardCore.settings.menuFontScaleLabel': 'Tamanho do texto do menu',
+    'dashboardCore.settings.menuFontScaleSmall': 'Pequeno',
+    'dashboardCore.settings.menuFontScaleMedium': 'Médio',
+    'dashboardCore.settings.menuFontScaleLarge': 'Grande',
+    'dashboardCore.settings.menuLayoutModeLabel': 'Estilo do menu online',
+    'dashboardCore.settings.menuLayoutModeList': 'Lista',
+    'dashboardCore.settings.menuLayoutModePoster': 'Pôster (foto real)',
+    'dashboardCore.settings.menuLayoutModeListHelp':
+      'O menu aparece como uma lista, com a sua foto desfocada ao fundo.',
+    'dashboardCore.settings.menuLayoutModePosterHelp':
+      'O menu aparece sobre a sua foto real (sem desfoque), com cada prato colocado à mão onde você decidir.',
+    'dashboardCore.settings.editPosterPositionsLink': 'Colocar os pratos na foto →',
+    'dashboardCore.settings.menuBackgroundBlurLabel': 'Desfoque do fundo',
+    'dashboardCore.settings.menuBackgroundTintLabel': 'Opacidade do véu',
     'dashboardCore.settings.slaHeading': 'Acordos de nível de serviço',
     'dashboardCore.settings.slaSubtitle':
       'Configure os objetivos usados pelas Análises para identificar um serviço lento.',
@@ -646,6 +688,20 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.removeMenuBackground': 'Hintergrund entfernen',
     'dashboardCore.settings.menuBackgroundHelp':
       'Um ihn durch ein anderes Foto zu ersetzen, importiere die Speisekarte erneut aus Fotos.',
+    'dashboardCore.settings.menuFontScaleLabel': 'Textgröße der Speisekarte',
+    'dashboardCore.settings.menuFontScaleSmall': 'Klein',
+    'dashboardCore.settings.menuFontScaleMedium': 'Mittel',
+    'dashboardCore.settings.menuFontScaleLarge': 'Groß',
+    'dashboardCore.settings.menuLayoutModeLabel': 'Stil der Online-Speisekarte',
+    'dashboardCore.settings.menuLayoutModeList': 'Liste',
+    'dashboardCore.settings.menuLayoutModePoster': 'Poster (echtes Foto)',
+    'dashboardCore.settings.menuLayoutModeListHelp':
+      'Die Speisekarte wird als Liste angezeigt, mit deinem unscharfen Foto im Hintergrund.',
+    'dashboardCore.settings.menuLayoutModePosterHelp':
+      'Die Speisekarte wird über deinem echten Foto angezeigt (nicht unscharf), mit jedem Gericht von Hand platziert.',
+    'dashboardCore.settings.editPosterPositionsLink': 'Gerichte auf dem Foto platzieren →',
+    'dashboardCore.settings.menuBackgroundBlurLabel': 'Hintergrundunschärfe',
+    'dashboardCore.settings.menuBackgroundTintLabel': 'Deckkraft der Schleier',
     'dashboardCore.settings.slaHeading': 'Service-Level-Agreements',
     'dashboardCore.settings.slaSubtitle':
       'Konfiguriere die Ziele, die von den Analysen verwendet werden, um langsamen Service zu erkennen.',
@@ -833,6 +889,20 @@ export const dashboardCore: Record<Locale, Record<string, string>> = {
     'dashboardCore.settings.removeMenuBackground': "Retirer l'arrière-plan",
     'dashboardCore.settings.menuBackgroundHelp':
       "Pour le remplacer par une autre photo, réimportez le menu à partir de photos.",
+    'dashboardCore.settings.menuFontScaleLabel': 'Taille du texte du menu',
+    'dashboardCore.settings.menuFontScaleSmall': 'Petit',
+    'dashboardCore.settings.menuFontScaleMedium': 'Moyen',
+    'dashboardCore.settings.menuFontScaleLarge': 'Grand',
+    'dashboardCore.settings.menuLayoutModeLabel': 'Style du menu en ligne',
+    'dashboardCore.settings.menuLayoutModeList': 'Liste',
+    'dashboardCore.settings.menuLayoutModePoster': 'Affiche (photo réelle)',
+    'dashboardCore.settings.menuLayoutModeListHelp':
+      'Le menu s\'affiche sous forme de liste, avec votre photo floutée en arrière-plan.',
+    'dashboardCore.settings.menuLayoutModePosterHelp':
+      'Le menu s\'affiche sur votre photo réelle (non floutée), avec chaque plat placé à la main où vous le souhaitez.',
+    'dashboardCore.settings.editPosterPositionsLink': 'Placer les plats sur la photo →',
+    'dashboardCore.settings.menuBackgroundBlurLabel': 'Flou de l\'arrière-plan',
+    'dashboardCore.settings.menuBackgroundTintLabel': 'Opacité du voile',
     'dashboardCore.settings.slaHeading': 'Accords de niveau de service',
     'dashboardCore.settings.slaSubtitle':
       'Configurez les objectifs utilisés par les statistiques pour identifier un service lent.',

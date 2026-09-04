@@ -19,7 +19,15 @@ import { FONT_PAIRINGS, isFontPairingKey, googleFontsHref } from '@/src/lib/font
 // the list rather than competing with the actual menu text. Not AI-edited
 // — see Restaurant.menuBackgroundUrl in schema.prisma for why (Gemini's
 // image-editing models aren't available on this project's free-tier key).
-function MenuBackground({ url }: { url: string | null }) {
+function MenuBackground({
+  url,
+  blur,
+  tint,
+}: {
+  url: string | null;
+  blur: number;
+  tint: number;
+}) {
   if (!url) return null;
 
   return (
@@ -40,10 +48,68 @@ function MenuBackground({ url }: { url: string | null }) {
           backgroundImage: `url(${url})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          filter: 'blur(18px)',
+          filter: `blur(${blur}px)`,
         }}
       />
-      <div className="absolute inset-0 bg-[#f7f3ec]/55" />
+      <div className="absolute inset-0 bg-[#f7f3ec]" style={{ opacity: tint }} />
+    </div>
+  );
+}
+
+// A small set of numeric multipliers for Restaurant.menuFontScale — kept
+// out of the DB as a fixed, validated list (see the settings route's Zod
+// enum) rather than a raw free number, so an item name can never be set
+// so large/small it breaks the layout.
+const FONT_SCALE_VALUES: Record<string, number> = {
+  small: 0.9,
+  medium: 1,
+  large: 1.15,
+};
+
+function fontScaleValue(key: string | null | undefined): number {
+  return (key && FONT_SCALE_VALUES[key]) || FONT_SCALE_VALUES.medium;
+}
+
+// Poster mode: the manager's own photo, shown sharp (not blurred — see
+// MenuBackground above, which is the List-mode ambience treatment) with
+// each manually-placed item rendered as a small readable pill at its
+// stored normalized (0-1) position. The wrapping div is sized entirely by
+// the <img>'s own normal-flow layout (no fixed aspect-ratio/height is set
+// here), so left/top percentages always line up with the rendered photo
+// regardless of viewport width — no separate scale-factor math needed.
+function PosterCanvas({
+  url,
+  items,
+  currency,
+  onSelectItem,
+}: {
+  url: string;
+  items: MenuItem[];
+  currency: string;
+  onSelectItem: (item: MenuItem) => void;
+}) {
+  return (
+    <div id="menu-poster" className="relative w-full scroll-mt-32 overflow-hidden rounded-lg">
+      <img src={url} alt="" className="block w-full h-auto" />
+
+      {items.map((item) => (
+        <button
+          key={item.id}
+          onClick={() => onSelectItem(item)}
+          className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-white/90 px-3 py-1.5 shadow-md backdrop-blur-sm transition-transform hover:scale-105"
+          style={{ left: `${(item.posterX ?? 0) * 100}%`, top: `${(item.posterY ?? 0) * 100}%` }}
+        >
+          <span
+            className="font-display text-[#29251f]"
+            style={{ fontSize: 'calc(0.8rem * var(--menu-font-scale, 1))' }}
+          >
+            {item.name}
+          </span>
+          <span className="ml-1.5 tabular-nums text-[11px] text-[var(--accent)]">
+            {formatCents(item.priceCents, currency)}
+          </span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -84,6 +150,11 @@ type MenuItem = {
   allergens: string[];
   dietaryTags: string[];
   modifiers: Modifier[];
+  // Normalized (0-1) position on the Poster-mode canvas. Both null =
+  // unplaced, renders in the ordinary list instead — see
+  // MenuItem.posterX/posterY in schema.prisma.
+  posterX: number | null;
+  posterY: number | null;
 };
 
 type Category = {
@@ -101,6 +172,10 @@ type MenuResponse = {
     brandPrimaryColor: string;
     brandFontPairing: string | null;
     menuBackgroundUrl: string | null;
+    menuLayoutMode: string;
+    menuBackgroundBlur: number;
+    menuBackgroundTint: number;
+    menuFontScale: string;
   };
   table: {
     id: string;
@@ -407,6 +482,7 @@ export default function CustomerMenu({
 
   const brandStyle = {
     '--accent': accent,
+    '--menu-font-scale': fontScaleValue(data.restaurant.menuFontScale),
     ...(fontPairingKey
       ? {
           '--font-display': `'${FONT_PAIRINGS[fontPairingKey].display}', serif`,
@@ -414,6 +490,9 @@ export default function CustomerMenu({
         }
       : {}),
   } as React.CSSProperties;
+
+  const isPosterMode =
+    data.restaurant.menuLayoutMode === 'POSTER' && !!data.restaurant.menuBackgroundUrl;
 
   if (partySize === null) {
     return (
@@ -423,7 +502,11 @@ export default function CustomerMenu({
         }`}
         style={brandStyle}
       >
-        <MenuBackground url={data.restaurant.menuBackgroundUrl} />
+        <MenuBackground
+          url={data.restaurant.menuBackgroundUrl}
+          blur={data.restaurant.menuBackgroundBlur}
+          tint={data.restaurant.menuBackgroundTint}
+        />
         <div className="w-full max-w-xs text-center">
           {data.restaurant.logoUrl ? (
             <img
@@ -510,14 +593,42 @@ export default function CustomerMenu({
         !/dessert|postre|postres/i.test(category.name)
       );
 
+  // In Poster mode, items the manager dragged onto the photo (posterX/Y
+  // both set) render as pills over it instead of in the list — everything
+  // else still shows up below, grouped by category, exactly as List mode
+  // always has. A category with every item placed simply drops out of the
+  // list (and its nav pill) rather than showing an empty section.
+  const placedItems = isPosterMode
+    ? visibleCategories.flatMap((category) =>
+        category.items.filter((item) => item.posterX !== null && item.posterY !== null)
+      )
+    : [];
+
+  const categoriesForList = isPosterMode
+    ? visibleCategories
+        .map((category) => ({
+          ...category,
+          items: category.items.filter(
+            (item) => item.posterX === null || item.posterY === null
+          ),
+        }))
+        .filter((category) => category.items.length > 0)
+    : visibleCategories;
+
   return (
     <div
       className={`relative min-h-screen text-[#29251f] font-body pb-32 ${
-        data.restaurant.menuBackgroundUrl ? '' : 'bg-[#f7f3ec]'
+        data.restaurant.menuBackgroundUrl && !isPosterMode ? '' : 'bg-[#f7f3ec]'
       }`}
       style={brandStyle}
     >
-      <MenuBackground url={data.restaurant.menuBackgroundUrl} />
+      {!isPosterMode && (
+        <MenuBackground
+          url={data.restaurant.menuBackgroundUrl}
+          blur={data.restaurant.menuBackgroundBlur}
+          tint={data.restaurant.menuBackgroundTint}
+        />
+      )}
       <header className="bg-[#f7f3ec] border-b border-[#29251f]/10">
         <div className="max-w-2xl mx-auto px-5 pt-5">
           <div className="flex justify-end">
@@ -565,7 +676,19 @@ export default function CustomerMenu({
 
         <nav className="max-w-2xl mx-auto px-5">
           <div className="flex justify-center gap-7 overflow-x-auto no-scrollbar">
-            {visibleCategories.map((category) => (
+            {isPosterMode && placedItems.length > 0 && (
+              <button
+                onClick={() =>
+                  document
+                    .getElementById('menu-poster')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+                className="relative whitespace-nowrap pb-4 text-xs uppercase tracking-[0.16em] text-[#29251f]/45 transition-colors"
+              >
+                {t('customerFlow.menu.posterNavLabel')}
+              </button>
+            )}
+            {categoriesForList.map((category) => (
               <button
                 key={category.id}
                 onClick={() => {
@@ -596,7 +719,18 @@ export default function CustomerMenu({
       </header>
 
       <main className="max-w-2xl mx-auto px-5">
-        {visibleCategories.map((category) => (
+        {isPosterMode && data.restaurant.menuBackgroundUrl && placedItems.length > 0 && (
+          <div className="pt-8">
+            <PosterCanvas
+              url={data.restaurant.menuBackgroundUrl}
+              items={placedItems}
+              currency={data.restaurant.currency}
+              onSelectItem={setActiveItem}
+            />
+          </div>
+        )}
+
+        {categoriesForList.map((category) => (
           <section
             key={category.id}
             id={`category-${category.id}`}
@@ -622,7 +756,10 @@ export default function CustomerMenu({
                   className="group w-full text-left border-b border-[#29251f]/10 py-5 transition-colors hover:bg-[#29251f]/[0.025]"
                 >
                   <div className="flex items-baseline gap-3">
-                    <span className="font-display text-xl group-hover:text-[var(--accent)] transition-colors">
+                    <span
+                      className="font-display text-xl group-hover:text-[var(--accent)] transition-colors"
+                      style={{ fontSize: 'calc(1.25rem * var(--menu-font-scale, 1))' }}
+                    >
                       {item.name}
                     </span>
 
@@ -850,7 +987,10 @@ function ItemModal({
         <div className="p-6 sm:p-7">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="font-display text-3xl">
+              <h3
+                className="font-display text-3xl"
+                style={{ fontSize: 'calc(1.875rem * var(--menu-font-scale, 1))' }}
+              >
                 {item.name}
               </h3>
 

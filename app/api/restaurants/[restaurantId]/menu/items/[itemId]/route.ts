@@ -18,6 +18,11 @@ const patchSchema = z.object({
   vatRateBps: z.number().int().min(0).max(10000).optional(),
   allergens: z.array(z.string().max(40)).max(20).optional(),
   dietaryTags: z.array(z.string().max(40)).max(10).optional(),
+  // Normalized (0-1) position on the restaurant's Poster-mode canvas. Both
+  // null together = unplaced (renders in the ordinary list instead). Set
+  // only by the manual drag editor — never AI-derived.
+  posterX: z.number().min(0).max(1).nullable().optional(),
+  posterY: z.number().min(0).max(1).nullable().optional(),
 });
 
 // Scoped by BOTH itemId and restaurantId in every query below — this is

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useI18n } from '@/src/lib/i18n/I18nProvider';
 import { FONT_PAIRINGS, FONT_PAIRING_KEYS, isFontPairingKey, googleFontsHref, type FontPairingKey } from '@/src/lib/fontPairings';
@@ -19,6 +20,10 @@ type Settings = {
   brandPrimaryColor: string;
   brandFontPairing: string | null;
   menuBackgroundUrl: string | null;
+  menuLayoutMode: string;
+  menuBackgroundBlur: number;
+  menuBackgroundTint: number;
+  menuFontScale: string;
   isOpen: boolean;
   isActive: boolean;
   googleReviewUrl: string | null;
@@ -73,6 +78,18 @@ export default function SettingsPage() {
 
   const [brandFontPairing, setBrandFontPairing] =
     useState<'default' | FontPairingKey>('default');
+
+  const [menuLayoutMode, setMenuLayoutMode] =
+    useState<'LIST' | 'POSTER'>('LIST');
+
+  const [menuBackgroundBlur, setMenuBackgroundBlur] =
+    useState(18);
+
+  const [menuBackgroundTint, setMenuBackgroundTint] =
+    useState(0.55);
+
+  const [menuFontScale, setMenuFontScale] =
+    useState<'small' | 'medium' | 'large'>('medium');
 
   const [loading, setLoading] =
     useState(true);
@@ -148,6 +165,24 @@ export default function SettingsPage() {
             ? data.brandFontPairing
             : 'default'
         );
+
+        setMenuLayoutMode(
+          data.menuLayoutMode === 'POSTER' ? 'POSTER' : 'LIST'
+        );
+
+        setMenuBackgroundBlur(
+          typeof data.menuBackgroundBlur === 'number' ? data.menuBackgroundBlur : 18
+        );
+
+        setMenuBackgroundTint(
+          typeof data.menuBackgroundTint === 'number' ? data.menuBackgroundTint : 0.55
+        );
+
+        setMenuFontScale(
+          data.menuFontScale === 'small' || data.menuFontScale === 'large'
+            ? data.menuFontScale
+            : 'medium'
+        );
       } catch (err) {
         setError(
           err instanceof Error
@@ -215,6 +250,11 @@ export default function SettingsPage() {
       body.brandFontPairing =
         brandFontPairing === 'default' ? null : brandFontPairing;
 
+      body.menuLayoutMode = menuLayoutMode;
+      body.menuBackgroundBlur = menuBackgroundBlur;
+      body.menuBackgroundTint = menuBackgroundTint;
+      body.menuFontScale = menuFontScale;
+
       const response = await fetch(
         `/api/restaurants/${restaurantId}/settings`,
         {
@@ -253,6 +293,14 @@ export default function SettingsPage() {
                 data.brandPrimaryColor,
               brandFontPairing:
                 data.brandFontPairing,
+              menuLayoutMode:
+                data.menuLayoutMode,
+              menuBackgroundBlur:
+                data.menuBackgroundBlur,
+              menuBackgroundTint:
+                data.menuBackgroundTint,
+              menuFontScale:
+                data.menuFontScale,
             }
           : current
       );
@@ -579,6 +627,24 @@ export default function SettingsPage() {
           </p>
         </div>
 
+        <div className="mt-4 border-t border-line pt-4">
+          <label className={labelClass}>
+            {t('dashboardCore.settings.menuFontScaleLabel')}
+          </label>
+
+          <select
+            value={menuFontScale}
+            onChange={(e) =>
+              setMenuFontScale(e.target.value as 'small' | 'medium' | 'large')
+            }
+            className={inputClass}
+          >
+            <option value="small">{t('dashboardCore.settings.menuFontScaleSmall')}</option>
+            <option value="medium">{t('dashboardCore.settings.menuFontScaleMedium')}</option>
+            <option value="large">{t('dashboardCore.settings.menuFontScaleLarge')}</option>
+          </select>
+        </div>
+
         {settings?.menuBackgroundUrl && (
           <div className="mt-4 border-t border-line pt-4">
             <label className={labelClass}>
@@ -610,6 +676,87 @@ export default function SettingsPage() {
             <p className="mt-2 text-xs text-ink/50">
               {t('dashboardCore.settings.menuBackgroundHelp')}
             </p>
+
+            <div className="mt-5">
+              <label className={labelClass}>
+                {t('dashboardCore.settings.menuLayoutModeLabel')}
+              </label>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMenuLayoutMode('LIST')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+                    menuLayoutMode === 'LIST'
+                      ? 'border-ink bg-ink text-paper'
+                      : 'border-line text-ink/70'
+                  }`}
+                >
+                  {t('dashboardCore.settings.menuLayoutModeList')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMenuLayoutMode('POSTER')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+                    menuLayoutMode === 'POSTER'
+                      ? 'border-ink bg-ink text-paper'
+                      : 'border-line text-ink/70'
+                  }`}
+                >
+                  {t('dashboardCore.settings.menuLayoutModePoster')}
+                </button>
+              </div>
+
+              <p className="mt-2 text-xs text-ink/50">
+                {menuLayoutMode === 'POSTER'
+                  ? t('dashboardCore.settings.menuLayoutModePosterHelp')
+                  : t('dashboardCore.settings.menuLayoutModeListHelp')}
+              </p>
+
+              {menuLayoutMode === 'POSTER' && (
+                <Link
+                  href={`/dashboard/${restaurantId}/menu/poster`}
+                  className="mt-3 inline-block text-xs underline text-ink/70 hover:text-ink"
+                >
+                  {t('dashboardCore.settings.editPosterPositionsLink')}
+                </Link>
+              )}
+            </div>
+
+            {menuLayoutMode === 'LIST' && (
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>
+                    {t('dashboardCore.settings.menuBackgroundBlurLabel')} ({menuBackgroundBlur}px)
+                  </label>
+
+                  <input
+                    type="range"
+                    min={0}
+                    max={40}
+                    value={menuBackgroundBlur}
+                    onChange={(e) => setMenuBackgroundBlur(Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>
+                    {t('dashboardCore.settings.menuBackgroundTintLabel')} ({Math.round(menuBackgroundTint * 100)}%)
+                  </label>
+
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round(menuBackgroundTint * 100)}
+                    onChange={(e) => setMenuBackgroundTint(Number(e.target.value) / 100)}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
