@@ -110,6 +110,13 @@ model Restaurant {
   // entered one yet; the compliance layer must refuse to run for a
   // restaurant where this is still null rather than hashing a blank value.
   taxId                  String?
+  // Shared secret that lets a waiter/kitchen hire create their own account
+  // at /join/[slug] instead of the manager typing it in for them (see
+  // app/api/public/restaurants/[slug]/staff-join/route.ts). Hashed with the
+  // same hashPassword() helper as User.passwordHash — never stored or
+  // returned in plaintext. Null means self-registration is off for this
+  // restaurant (the manager hasn't set one, or cleared it).
+  staffJoinPasswordHash  String?
   // Atomically incremented to hand out the next order number per
   // restaurant. Reading MAX(orderNumber)+1 at request time raced under
   // concurrent orders (two requests could read the same max before either

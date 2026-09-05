@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/src/lib/db';
-import { requireRestaurantAccess } from '@/src/lib/auth';
+import { requireRestaurantAccess, hashPassword } from '@/src/lib/auth';
 import { FONT_PAIRING_KEYS } from '@/src/lib/fontPairings';
 
 const schema = z.object({
@@ -34,6 +34,11 @@ const schema = z.object({
   menuBackgroundBlur: z.number().int().min(0).max(40).optional(),
   menuBackgroundTint: z.number().min(0).max(1).optional(),
   menuFontScale: z.enum(['small', 'medium', 'large']).optional(),
+  // A shared operational secret (like a Wi-Fi password), not a personal
+  // credential — see Restaurant.staffJoinPasswordHash. A 6-char floor
+  // rather than User passwords' 10, and null explicitly clears it
+  // (disables self-registration) rather than leaving it unchanged.
+  staffJoinPassword: z.string().min(6).max(100).nullable().optional(),
 });
 
 type RouteContext = {
@@ -87,6 +92,7 @@ export async function GET(
         waiterSlaSeconds: true,
         allowPayAtRestaurant: true,
         reservationBufferMinutes: true,
+        staffJoinPasswordHash: true,
       },
     });
 
@@ -106,8 +112,12 @@ export async function GET(
           restaurant.waiterSlaSeconds
         : null;
 
+    // Never echo the hash itself — just whether one is set.
+    const { staffJoinPasswordHash, ...rest } = restaurant;
+
     return NextResponse.json({
-      ...restaurant,
+      ...rest,
+      hasStaffJoinPassword: !!staffJoinPasswordHash,
       totalServiceSlaSeconds,
     });
   } catch (err) {
@@ -138,6 +148,16 @@ export async function PATCH(
     }
 
     const body = schema.parse(await req.json());
+
+    // Hash outside the update() call — never write the raw password, and
+    // null means "clear it" (disable self-registration) rather than a
+    // no-op, matching the rest of this route's nullable-field convention.
+    const staffJoinPasswordHash =
+      body.staffJoinPassword === undefined
+        ? undefined
+        : body.staffJoinPassword === null
+          ? null
+          : await hashPassword(body.staffJoinPassword);
 
     const current = await db.restaurant.findUnique({
       where: { id: params.restaurantId },
@@ -220,6 +240,9 @@ export async function PATCH(
         ...(body.menuFontScale !== undefined
           ? { menuFontScale: body.menuFontScale }
           : {}),
+        ...(staffJoinPasswordHash !== undefined
+          ? { staffJoinPasswordHash }
+          : {}),
         totalServiceSlaSeconds: total,
       },
       select: {
@@ -248,6 +271,7 @@ export async function PATCH(
         waiterSlaSeconds: true,
         allowPayAtRestaurant: true,
         reservationBufferMinutes: true,
+        staffJoinPasswordHash: true,
       },
     });
 
@@ -260,8 +284,11 @@ export async function PATCH(
           updated.waiterSlaSeconds
         : null;
 
+    const { staffJoinPasswordHash: updatedHash, ...updatedRest } = updated;
+
     return NextResponse.json({
-      ...updated,
+      ...updatedRest,
+      hasStaffJoinPassword: !!updatedHash,
       totalServiceSlaSeconds,
     });
   } catch (err) {

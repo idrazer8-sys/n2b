@@ -26,6 +26,7 @@ type Settings = {
   menuFontScale: string;
   isOpen: boolean;
   isActive: boolean;
+  hasStaffJoinPassword: boolean;
   googleReviewUrl: string | null;
   acceptanceSlaSeconds: number | null;
   kitchenSlaSeconds: number | null;
@@ -109,6 +110,18 @@ export default function SettingsPage() {
   const [removingBackground, setRemovingBackground] =
     useState(false);
 
+  const [hasStaffJoinPassword, setHasStaffJoinPassword] =
+    useState(false);
+
+  const [staffJoinPasswordDraft, setStaffJoinPasswordDraft] =
+    useState('');
+
+  const [savingStaffJoinPassword, setSavingStaffJoinPassword] =
+    useState(false);
+
+  const [staffJoinPasswordError, setStaffJoinPasswordError] =
+    useState('');
+
   useEffect(() => {
     async function loadSettings() {
       try {
@@ -183,6 +196,8 @@ export default function SettingsPage() {
             ? data.menuFontScale
             : 'medium'
         );
+
+        setHasStaffJoinPassword(!!data.hasStaffJoinPassword);
       } catch (err) {
         setError(
           err instanceof Error
@@ -401,6 +416,67 @@ export default function SettingsPage() {
       );
     } finally {
       setRemovingBackground(false);
+    }
+  }
+
+  async function saveStaffJoinPassword() {
+    if (staffJoinPasswordDraft.trim().length < 6) {
+      setStaffJoinPasswordError(t('dashboardCore.settings.staffJoinPasswordTooShort'));
+      return;
+    }
+
+    setSavingStaffJoinPassword(true);
+    setStaffJoinPasswordError('');
+
+    try {
+      const response = await fetch(`/api/restaurants/${restaurantId}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffJoinPassword: staffJoinPasswordDraft.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || t('dashboardCore.settings.unableToSave'));
+      }
+
+      setHasStaffJoinPassword(true);
+      setStaffJoinPasswordDraft('');
+    } catch (err) {
+      setStaffJoinPasswordError(
+        err instanceof Error ? err.message : t('dashboardCore.settings.unableToSave')
+      );
+    } finally {
+      setSavingStaffJoinPassword(false);
+    }
+  }
+
+  async function clearStaffJoinPassword() {
+    setSavingStaffJoinPassword(true);
+    setStaffJoinPasswordError('');
+
+    try {
+      const response = await fetch(`/api/restaurants/${restaurantId}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffJoinPassword: null }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || t('dashboardCore.settings.unableToSave'));
+      }
+
+      setHasStaffJoinPassword(false);
+      setStaffJoinPasswordDraft('');
+    } catch (err) {
+      setStaffJoinPasswordError(
+        err instanceof Error ? err.message : t('dashboardCore.settings.unableToSave')
+      );
+    } finally {
+      setSavingStaffJoinPassword(false);
     }
   }
 
@@ -758,6 +834,79 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+        )}
+      </section>
+
+      <section className="border border-line rounded-xl p-5">
+        <h2 className={cardHeadingClass}>
+          {t('dashboardCore.settings.staffJoinHeading')}
+        </h2>
+
+        <p className="text-xs text-ink/50 -mt-3 mb-4">
+          {t('dashboardCore.settings.staffJoinSubtitle')}
+        </p>
+
+        <div className="flex items-center gap-2 mb-4">
+          <span
+            className={`inline-block h-2 w-2 rounded-full ${
+              hasStaffJoinPassword ? 'bg-green-500' : 'bg-ink/20'
+            }`}
+          />
+          <span className="text-xs text-ink/60">
+            {hasStaffJoinPassword
+              ? t('dashboardCore.settings.staffJoinConfigured')
+              : t('dashboardCore.settings.staffJoinNotConfigured')}
+          </span>
+        </div>
+
+        {hasStaffJoinPassword && settings?.slug && (
+          <div className="mb-4">
+            <label className={labelClass}>
+              {t('dashboardCore.settings.staffJoinLinkLabel')}
+            </label>
+            <input
+              value={`/join/${settings.slug}`}
+              readOnly
+              className={`${inputClass} bg-black/[0.02]`}
+              onFocus={(e) => e.target.select()}
+            />
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <input
+            type="password"
+            value={staffJoinPasswordDraft}
+            onChange={(e) => setStaffJoinPasswordDraft(e.target.value)}
+            placeholder={
+              hasStaffJoinPassword
+                ? t('dashboardCore.settings.staffJoinChangePlaceholder')
+                : t('dashboardCore.settings.staffJoinSetPlaceholder')
+            }
+            className={inputClass}
+          />
+          <button
+            type="button"
+            onClick={saveStaffJoinPassword}
+            disabled={savingStaffJoinPassword || staffJoinPasswordDraft.trim() === ''}
+            className="shrink-0 bg-ink text-paper rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+          >
+            {t('dashboardCore.settings.staffJoinSave')}
+          </button>
+          {hasStaffJoinPassword && (
+            <button
+              type="button"
+              onClick={clearStaffJoinPassword}
+              disabled={savingStaffJoinPassword}
+              className="shrink-0 border border-line rounded-lg px-3 py-2 text-xs text-red-700 disabled:opacity-50"
+            >
+              {t('dashboardCore.settings.staffJoinClear')}
+            </button>
+          )}
+        </div>
+
+        {staffJoinPasswordError && (
+          <p className="mt-2 text-xs text-red-700">{staffJoinPasswordError}</p>
         )}
       </section>
 

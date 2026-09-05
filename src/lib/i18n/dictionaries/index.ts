@@ -19,6 +19,7 @@ import { legal } from './legal';
 import { allergens } from './allergens';
 import { orderHistory } from './orderHistory';
 import { dietaryTags } from './dietaryTags';
+import { staffJoin } from './staffJoin';
 
 const NAMESPACES: Record<Locale, Record<string, string>>[] = [
   common,
@@ -41,6 +42,7 @@ const NAMESPACES: Record<Locale, Record<string, string>>[] = [
   allergens,
   orderHistory,
   dietaryTags,
+  staffJoin,
 ];
 
 const cache = new Map<Locale, Record<string, string>>();
